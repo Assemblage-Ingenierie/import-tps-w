@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Import Tps W — Assemblage ingénierie</title>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root { --rouge:#E30513;--violet:#30323E;--gris:#DFE4E8;--rouge-clair:#F9E1E3;--gris-leger:#F2F2F2;--noir70:#4D4D4D;--header-h:68px; }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Open Sans',sans-serif;background:var(--gris-leger);color:var(--violet);min-height:100vh;}
+  header{height:var(--header-h);background:var(--gris-leger);display:flex;align-items:center;padding:0 32px;gap:16px;border-bottom:3px solid var(--rouge);position:sticky;top:0;z-index:100;}
+  .logo-mark{width:40px;height:40px;background:var(--rouge);border-radius:4px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .logo-mark span{color:white;font-weight:700;font-size:18px;letter-spacing:-1px;}
+  header h1{font-size:18px;font-weight:700;color:var(--violet);line-height:1.2;}
+  header h1 small{display:block;font-size:11px;font-weight:400;color:var(--noir70);}
+  .layout{display:flex;min-height:calc(100vh - var(--header-h));}
+  aside{width:220px;flex-shrink:0;background:var(--violet);padding:28px 0;display:flex;flex-direction:column;gap:4px;}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:12px 20px;color:rgba(255,255,255,0.6);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;border-left:3px solid transparent;user-select:none;}
+  .nav-item:hover{color:white;background:rgba(255,255,255,.07);}
+  .nav-item.active{color:white;border-left-color:var(--rouge);background:rgba(255,255,255,.1);}
+  .nav-item .icon{font-size:15px;width:20px;text-align:center;}
+  .nav-sep{height:1px;background:rgba(255,255,255,.1);margin:8px 20px;}
+  main{flex:1;padding:32px;max-width:860px;}
+  .step{display:none;} .step.active{display:block;}
+  .section-title{font-size:20px;font-weight:700;color:var(--rouge);margin-bottom:24px;padding-bottom:10px;border-bottom:1px dashed var(--rouge);}
+  .card{background:white;border-radius:6px;padding:24px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,.08);}
+  .card-title{font-size:13px;font-weight:700;color:var(--noir70);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px;}
+  input[type="password"],input[type="text"]{width:100%;padding:10px 14px;border:1.5px solid var(--gris);border-radius:4px;font-family:'Open Sans',sans-serif;font-size:14px;color:var(--violet);transition:border-color .15s;outline:none;}
+  input:focus{border-color:var(--rouge);}
+  .hint{font-size:12px;color:var(--noir70);margin-top:8px;line-height:1.5;}
+  .hint a{color:var(--rouge);text-decoration:none;}
+  .drop-zone{border:2px dashed var(--gris);border-radius:8px;padding:48px 24px;text-align:center;cursor:pointer;transition:all .2s;background:var(--gris-leger);position:relative;}
+  .drop-zone:hover,.drop-zone.dragover{border-color:var(--rouge);background:var(--rouge-clair);}
+  .drop-zone input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+  .drop-icon{font-size:40px;margin-bottom:12px;} .drop-text{font-size:15px;font-weight:600;color:var(--violet);margin-bottom:4px;} .drop-sub{font-size:12px;color:var(--noir70);}
+  .file-selected{display:flex;align-items:center;gap:12px;background:white;border-radius:6px;padding:14px 18px;margin-top:16px;box-shadow:0 1px 3px rgba(0,0,0,.1);}
+  .file-name{font-weight:600;font-size:14px;color:var(--violet);} .file-meta{font-size:12px;color:var(--noir70);}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:11px 22px;border-radius:4px;font-family:'Open Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;border:none;transition:all .15s;}
+  .btn-primary{background:var(--rouge);color:white;} .btn-primary:hover{background:#c0040f;} .btn-primary:disabled{background:var(--gris);color:var(--noir70);cursor:not-allowed;}
+  .btn-secondary{background:var(--gris-leger);color:var(--violet);border:1.5px solid var(--gris);} .btn-secondary:hover{background:var(--gris);}
+  .btn-group{display:flex;gap:12px;margin-top:20px;flex-wrap:wrap;}
+  .validation-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;}
+  .stat-box{background:white;border-radius:6px;padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,.08);text-align:center;}
+  .stat-box.ok{border-top:3px solid #27ae60;} .stat-box.warn{border-top:3px solid #e67e22;} .stat-box.err{border-top:3px solid var(--rouge);}
+  .stat-n{font-size:28px;font-weight:700;color:var(--violet);} .stat-l{font-size:12px;color:var(--noir70);margin-top:4px;}
+  .alert-list{background:white;border-radius:6px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-bottom:12px;}
+  .alert-header{padding:10px 16px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;}
+  .alert-header.warn{background:#fff3e0;color:#e67e22;} .alert-header.err{background:var(--rouge-clair);color:var(--rouge);}
+  .alert-header.ok{background:#e8f5e9;color:#27ae60;} .alert-header.info{background:var(--gris-leger);color:var(--violet);}
+  .alert-row{padding:9px 16px;border-top:1px solid var(--gris-leger);font-size:13px;color:var(--violet);display:flex;align-items:center;gap:8px;}
+  .badge{font-size:11px;font-weight:700;padding:2px 7px;border-radius:10px;white-space:nowrap;flex-shrink:0;}
+  .badge-warn{background:#fff3e0;color:#e67e22;} .badge-err{background:var(--rouge-clair);color:var(--rouge);} .badge-info{background:var(--gris);color:var(--violet);}
+  .link-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:20px;}
+  .link-stat-box{background:white;border-radius:6px;padding:14px 18px;box-shadow:0 1px 3px rgba(0,0,0,.08);display:flex;align-items:center;gap:14px;}
+  .link-stat-box.linked{border-left:4px solid #27ae60;} .link-stat-box.unlinked{border-left:4px solid #e67e22;}
+  .link-stat-icon{font-size:24px;} .link-stat-n{font-size:22px;font-weight:700;color:var(--violet);} .link-stat-l{font-size:12px;color:var(--noir70);}
+  .preview-table{width:100%;border-collapse:collapse;font-size:12px;}
+  .preview-table th{background:var(--violet);color:white;padding:8px 10px;text-align:left;font-weight:600;}
+  .preview-table td{padding:7px 10px;border-bottom:1px solid var(--gris-leger);color:var(--violet);}
+  .preview-table tr:hover td{background:var(--gris-leger);}
+  .preview-table td.linked{color:#27ae60;font-weight:600;} .preview-table td.unlinked{color:#e67e22;}
+  .preview-wrap{background:white;border-radius:6px;overflow:auto;max-height:280px;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-bottom:20px;}
+  .progress-wrap{background:var(--gris);border-radius:20px;height:10px;overflow:hidden;margin:16px 0;}
+  .progress-bar{height:100%;background:var(--rouge);border-radius:20px;transition:width .3s;width:0%;}
+  .log-box{background:var(--violet);color:rgba(255,255,255,.85);border-radius:6px;padding:16px;font-size:12px;font-family:'Courier New',monospace;line-height:1.7;max-height:240px;overflow-y:auto;margin-bottom:20px;}
+  .log-ok{color:#2ecc71;} .log-warn{color:#f39c12;} .log-err{color:#e74c3c;} .log-info{color:rgba(255,255,255,.55);}
+  .result-banner{border-radius:8px;padding:24px 28px;margin-bottom:20px;display:flex;align-items:center;gap:20px;}
+  .result-banner.success{background:#e8f5e9;border-left:5px solid #27ae60;} .result-banner.partial{background:var(--rouge-clair);border-left:5px solid var(--rouge);}
+  .result-icon{font-size:36px;} .result-title{font-size:18px;font-weight:700;margin-bottom:4px;} .result-sub{font-size:13px;color:var(--noir70);line-height:1.6;}
+  .settings-row{display:flex;flex-direction:column;gap:6px;margin-bottom:16px;} .settings-row label{font-size:13px;font-weight:600;color:var(--violet);}
+  .info-box{background:var(--gris-leger);border-left:3px solid var(--rouge);padding:12px 16px;border-radius:0 4px 4px 0;font-size:12px;color:var(--noir70);line-height:1.6;margin-top:16px;}
+  .watermark{position:fixed;bottom:16px;right:16px;width:44px;opacity:.18;pointer-events:none;}
+  .watermark-a{width:44px;height:44px;background:var(--rouge);border-radius:4px;display:flex;align-items:center;justify-content:center;}
+  .watermark-a span{color:white;font-weight:700;font-size:22px;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo-mark"><span>.A</span></div>
+  <h1>Import Tps W <small>Assemblage ingénierie · Airtable</small></h1>
+</header>
+<div class="layout">
+  <aside>
+    <div class="nav-item active" onclick="showStep('upload')"   id="nav-upload">  <span class="icon">📂</span> Fichier Excel</div>
+    <div class="nav-item"        onclick="showStep('validate')" id="nav-validate"><span class="icon">🔍</span> Validation</div>
+    <div class="nav-item"        onclick="showStep('import')"   id="nav-import">  <span class="icon">📤</span> Import Airtable</div>
+    <div class="nav-sep"></div>
+    <div class="nav-item"        onclick="showStep('settings')" id="nav-settings"><span class="icon">⚙️</span> Paramètres</div>
+  </aside>
+  <main>
+    <!-- UPLOAD -->
+    <div class="step active" id="step-upload">
+      <div class="section-title">1 — Sélection du fichier Excel</div>
+      <div class="card">
+        <div class="drop-zone" id="dropZone">
+          <input type="file" accept=".xlsx,.xls" id="fileInput" onchange="handleFile(this.files[0])">
+          <div class="drop-icon">📊</div>
+          <div class="drop-text">Glisser-déposer votre fichier Excel ici</div>
+          <div class="drop-sub">ou cliquer pour parcourir — .xlsx / .xls</div>
+        </div>
+        <div id="fileInfo" style="display:none" class="file-selected">
+          <span style="font-size:22px">📗</span>
+          <div><div class="file-name" id="fileName"></div><div class="file-meta" id="fileMeta"></div></div>
+        </div>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-primary" id="btnValidate" disabled onclick="runValidation()">🔍 Analyser le fichier</button>
+      </div>
+    </div>
+    <!-- VALIDATION -->
+    <div class="step" id="step-validate">
+      <div class="section-title">2 — Validation &amp; résolution des liens</div>
+      <div class="validation-summary">
+        <div class="stat-box ok">  <div class="stat-n" id="statOk">—</div>  <div class="stat-l">Records valides</div></div>
+        <div class="stat-box warn"><div class="stat-n" id="statWarn">—</div><div class="stat-l">Alertes</div></div>
+        <div class="stat-box err"> <div class="stat-n" id="statErr">—</div> <div class="stat-l">Erreurs critiques</div></div>
+      </div>
+      <div id="linkStatsBox" style="display:none" class="link-stats">
+        <div class="link-stat-box linked">  <div class="link-stat-icon">👤</div><div><div class="link-stat-n" id="linkCollabOk">—</div>  <div class="link-stat-l">Collaborateurs liés</div></div></div>
+        <div class="link-stat-box unlinked"><div class="link-stat-icon">⚠️</div><div><div class="link-stat-n" id="linkCollabMiss">—</div><div class="link-stat-l">Collaborateurs non trouvés</div></div></div>
+        <div class="link-stat-box linked">  <div class="link-stat-icon">📁</div><div><div class="link-stat-n" id="linkAffaireOk">—</div>  <div class="link-stat-l">Affaires liées</div></div></div>
+        <div class="link-stat-box unlinked"><div class="link-stat-icon">⚠️</div><div><div class="link-stat-n" id="linkAffaireMiss">—</div><div class="link-stat-l">Affaires non trouvées</div></div></div>
+      </div>
+      <div id="alertsBox"></div>
+      <div class="card">
+        <div class="card-title">Aperçu (10 premières lignes) — <span style="color:#27ae60">■</span> lié &nbsp;<span style="color:#e67e22">■</span> non lié</div>
+        <div class="preview-wrap"><table class="preview-table" id="previewTable"></table></div>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-secondary" onclick="showStep('upload')">← Retour</button>
+        <button class="btn btn-primary" id="btnImport" disabled onclick="showStep('import')">📤 Lancer l'import →</button>
+      </div>
+    </div>
+    <!-- IMPORT -->
+    <div class="step" id="step-import">
+      <div class="section-title">3 — Import Airtable</div>
+      <div class="card" id="importReady">
+        <div class="card-title">Prêt à importer</div>
+        <p style="font-size:14px;line-height:1.6;margin-bottom:16px;">
+          <strong id="importCount">—</strong> records seront envoyés dans <strong>Tps W</strong>, avec les liens Collaborateur et Affaire résolus automatiquement.
+        </p>
+        <button class="btn btn-primary" onclick="runImport()">🚀 Importer maintenant</button>
+      </div>
+      <div id="importProgress" style="display:none">
+        <div class="card">
+          <div class="card-title">Progression</div>
+          <div class="progress-wrap"><div class="progress-bar" id="progressBar"></div></div>
+          <div style="font-size:13px;color:var(--noir70);margin-bottom:12px;" id="progressText">Initialisation…</div>
+          <div class="log-box" id="logBox"></div>
+        </div>
+      </div>
+      <div id="importResult" style="display:none"></div>
+      <div class="btn-group" id="importBackBtn" style="display:none">
+        <button class="btn btn-secondary" onclick="resetAll()">⟳ Nouvel import</button>
+      </div>
+    </div>
+    <!-- PARAMETRES -->
+    <div class="step" id="step-settings">
+      <div class="section-title">⚙️ Paramètres</div>
+      <div class="card">
+        <div class="card-title">Token Airtable</div>
+        <div class="settings-row">
+          <label>Personal Access Token</label>
+          <input type="password" id="tokenInput" placeholder="patXXXXXXXXXXXXXX" oninput="saveToken(this.value)">
+        </div>
+        <div class="hint">
+          Créer sur <a href="https://airtable.com/account" target="_blank">airtable.com/account</a> → Personal access tokens → Create token.<br>
+          Scope requis : <code>data.records:read</code> + <code>data.records:write</code> sur la base Assemblage.<br>
+          Stocké uniquement dans votre navigateur (localStorage).
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Configuration</div>
+        <div class="settings-row"><label>Base Airtable</label><input type="text" value="app7d0qSY8L7om0Ke" readonly style="background:var(--gris-leger);color:var(--noir70);"></div>
+        <div class="settings-row"><label>Table cible</label><input type="text" value="Tps W (tble4Su3mWGgez7mj)" readonly style="background:var(--gris-leger);color:var(--noir70);"></div>
+        <div class="settings-row"><label>Onglet Excel lu</label><input type="text" value="Détails" readonly style="background:var(--gris-leger);color:var(--noir70);"></div>
+        <div class="info-box">
+          Lors de la validation, l'app charge automatiquement les tables <strong>Collaborateur</strong> et <strong>Affaire</strong>
+          et résout les liens avant envoi. Si un collaborateur ou une affaire n'existe pas, le lien est laissé vide sans erreur.
+        </div>
+      </div>
+      <div class="btn-group"><button class="btn btn-primary" onclick="showStep('upload')">✓ Enregistrer & retour</button></div>
+    </div>
+  </main>
+</div>
+<div class="watermark"><div class="watermark-a"><span>.A</span></div></div>
+
+<script>
+// ── Config ──────────────────────────────────────────────────────────────────
+const BASE_ID       = 'app7d0qSY8L7om0Ke';
+const TABLE_TPS_W   = 'tble4Su3mWGgez7mj';
+const TABLE_COLLAB  = 'tblfv2fUdCrKOVjMO';
+const TABLE_AFFAIRE = 'tblOT9d8lAnOS50wK';
+const SHEET = 'Détails';
+const BATCH = 10;
+
+const F = {
+  id_collab:    'fldhbucYXDPn7Zlpr',
+  matricule:    'fldZyK9cGOs2y9Zkh',
+  nom:          'fldQkWAaZJBRN27JL',
+  prenom:       'fldLGNJpFVe2ps4rX',
+  jour:         'fldJRo4by8KQCGQiv',
+  code_projet:  'fldmoLZ3HtivN01Cs',
+  nom_projet:   'fld4UpyuG9ILu9jAL',
+  temps:        'fldil04cXYHbHkPKm',
+  unite:        'fldzliKp1juKBP3F1',
+  h_debut:      'flduwfXxQrcETpZaB',
+  h_fin:        'fldFyy9ib4hFa215o',
+  link_collab:  'fldxbwDTTZvXhbPtv',  // Collaborateur (link)
+  link_affaire: 'fldl5Hmib4WzWKha0',  // Affaire (Link)
+};
+const F_COLLAB_KEY  = 'fld9WrKGu5VYU3sOy'; // ID Collab-Exercice dans Collaborateur
+const F_AFFAIRE_KEY = 'fld3POCst63t3kpBv'; // Clef dans Affaire
+
+const FIELD_MAP = [
+  {col:0,  label:'ID du collaborateur',     id:F.id_collab,   type:'text'},
+  {col:1,  label:'Matricule',               id:F.matricule,   type:'select'},
+  {col:2,  label:'Nom du collaborateur',    id:F.nom,         type:'select'},
+  {col:3,  label:'Prénom du collaborateur', id:F.prenom,      type:'select'},
+  {col:4,  label:'Jour',                    id:F.jour,        type:'date'},
+  {col:5,  label:'Code projet',             id:F.code_projet, type:'text', required:true},
+  {col:6,  label:'Nom du projet',           id:F.nom_projet,  type:'select'},
+  {col:7,  label:'Temps travaillé',         id:F.temps,       type:'number'},
+  {col:8,  label:'Unité',                   id:F.unite,       type:'select'},
+  {col:9,  label:'Heure de début',          id:F.h_debut,     type:'select'},
+  {col:10, label:'Heure de fin',            id:F.h_fin,       type:'select'},
+];
+
+// ── State ───────────────────────────────────────────────────────────────────
+let parsedRecords=[], warnings=[], criticalErrors=[];
+let collabIndex={}, affaireIndex={}, indexesLoaded=false;
+
+// ── Token ────────────────────────────────────────────────────────────────────
+function saveToken(v){if(v)localStorage.setItem('ai_airtable_token',v);}
+function getToken(){return localStorage.getItem('ai_airtable_token')||'';}
+window.addEventListener('DOMContentLoaded',()=>{const t=getToken();if(t)document.getElementById('tokenInput').value=t;});
+
+// ── Navigation ───────────────────────────────────────────────────────────────
+function showStep(name){
+  document.querySelectorAll('.step').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('step-'+name).classList.add('active');
+  document.getElementById('nav-'+name).classList.add('active');
+}
+
+// ── Drag & Drop ──────────────────────────────────────────────────────────────
+const dz=document.getElementById('dropZone');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dragover');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('dragover'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('dragover');if(e.dataTransfer.files[0])handleFile(e.dataTransfer.files[0]);});
+
+function handleFile(file){
+  if(!file)return;
+  document.getElementById('fileName').textContent=file.name;
+  document.getElementById('fileMeta').textContent=(file.size/1024).toFixed(1)+' Ko · '+new Date(file.lastModified).toLocaleDateString('fr-FR');
+  document.getElementById('fileInfo').style.display='flex';
+  document.getElementById('btnValidate').disabled=false;
+  window._currentFile=file;
+}
+
+// ── Parse date ───────────────────────────────────────────────────────────────
+function parseDate(v){
+  if(!v&&v!==0)return null;
+  if(v instanceof Date){const y=v.getFullYear(),m=String(v.getMonth()+1).padStart(2,'0'),d=String(v.getDate()).padStart(2,'0');return `${y}-${m}-${d}`;}
+  if(typeof v==='number'){try{const d=XLSX.SSF.parse_date_code(v);return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;}catch{return null;}}
+  const s=String(v).trim();
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;
+  let m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);if(m)return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+  m=s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);if(m)return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+  return null;
+}
+
+// ── Calcul clé collaborateur (Prénom + " - " + Exercice) ─────────────────────
+// Exercice : mois >= 7 → YY/YY+1 | mois < 7 → YY-1/YY
+function calcExercice(dateStr){
+  if(!dateStr)return'';
+  const[y,m]=dateStr.split('-').map(Number);
+  return m>=7?`${String(y).slice(2)}/${String(y+1).slice(2)}`:`${String(y-1).slice(2)}/${String(y).slice(2)}`;
+}
+function calcCollabKey(prenom,dateStr){
+  if(!prenom||!dateStr)return null;
+  return `${prenom} - ${calcExercice(dateStr)}`;
+}
+
+// ── Chargement des index Airtable ─────────────────────────────────────────────
+async function loadIndexes(token){
+  collabIndex={}; affaireIndex={};
+  const headers={'Authorization':'Bearer '+token};
+
+  // Collaborateurs
+  let offset=null;
+  do{
+    const p=new URLSearchParams({'fields[]':F_COLLAB_KEY,pageSize:100});
+    if(offset)p.set('offset',offset);
+    const r=await fetch(`https://api.airtable.com/v0/${BASE_ID}/${TABLE_COLLAB}?${p}`,{headers});
+    const d=await r.json();
+    if(!r.ok)throw new Error('Collaborateur: '+(d.error?.message||r.status));
+    for(const rec of d.records){const k=rec.fields[F_COLLAB_KEY];if(k)collabIndex[k]=rec.id;}
+    offset=d.offset||null;
+  }while(offset);
+
+  // Affaires (paginer — ~800 records)
+  offset=null;
+  do{
+    const p=new URLSearchParams({'fields[]':F_AFFAIRE_KEY,pageSize:100});
+    if(offset)p.set('offset',offset);
+    const r=await fetch(`https://api.airtable.com/v0/${BASE_ID}/${TABLE_AFFAIRE}?${p}`,{headers});
+    const d=await r.json();
+    if(!r.ok)throw new Error('Affaire: '+(d.error?.message||r.status));
+    for(const rec of d.records){const k=rec.fields[F_AFFAIRE_KEY];if(k)affaireIndex[k]=rec.id;}
+    offset=d.offset||null;
+  }while(offset);
+
+  indexesLoaded=true;
+}
+
+// ── Validation ────────────────────────────────────────────────────────────────
+async function runValidation(){
+  if(!window._currentFile)return;
+  parsedRecords=[]; warnings=[]; criticalErrors=[]; indexesLoaded=false;
+  const token=getToken();
+
+  // Lire Excel
+  let rows;
+  try{
+    const ab=await window._currentFile.arrayBuffer();
+    const wb=XLSX.read(ab,{type:'array',cellDates:false});
+    if(!wb.SheetNames.includes(SHEET)){alert(`❌ Onglet "${SHEET}" introuvable.\n${wb.SheetNames.join(', ')}`);return;}
+    rows=XLSX.utils.sheet_to_json(wb.Sheets[SHEET],{header:1,defval:null}).slice(1);
+  }catch(e){alert('Erreur lecture : '+e.message);return;}
+
+  // Transformer
+  rows.forEach((raw,i)=>{
+    const ln=i+2, fields={}, rowW=[];
+    let skip=false;
+    FIELD_MAP.forEach(f=>{
+      const val=raw[f.col];
+      if(f.type==='date'){
+        const d=parseDate(val);
+        if(!d){criticalErrors.push({line:ln,msg:`Jour : date manquante (${val})`});skip=true;}
+        else fields[f.id]=d;
+      }else if(f.type==='number'){
+        if(val!==null&&val!==''){const n=parseFloat(val);if(isNaN(n))rowW.push({line:ln,msg:`Temps : non numérique (${val})`});else{fields[f.id]=n;if(n<=0||n>1)rowW.push({line:ln,msg:`Temps inhabituels (${n})`});}}
+      }else{
+        if(val!==null&&String(val).trim()!=='')fields[f.id]=String(val).trim();
+        else if(f.required)rowW.push({line:ln,msg:`${f.label} : vide`});
+      }
+    });
+    warnings.push(...rowW);
+    if(!skip)parsedRecords.push({fields,_line:ln});
+  });
+
+  // Charger index Airtable
+  let linkError=null;
+  if(token){
+    const btn=document.getElementById('btnValidate');
+    btn.textContent='⏳ Chargement des référentiels…'; btn.disabled=true;
+    try{await loadIndexes(token);}
+    catch(e){linkError=e.message;}
+    finally{btn.textContent='🔍 Analyser le fichier'; btn.disabled=false;}
+  }
+
+  // Résoudre les liens
+  let cOk=0,cMiss=0,aOk=0,aMiss=0;
+  const missC=new Set(), missA=new Set();
+  parsedRecords.forEach(r=>{
+    const f=r.fields;
+    const prenom=f[F.prenom]||'', jour=f[F.jour]||'', code=f[F.code_projet]||'';
+    if(indexesLoaded&&prenom&&jour){
+      const key=calcCollabKey(prenom,jour); r._collabKey=key;
+      if(collabIndex[key]){f[F.link_collab]=[collabIndex[key]];cOk++;}
+      else{cMiss++;missC.add(key);}
+    }
+    if(indexesLoaded&&code){
+      r._affaireKey=code;
+      if(affaireIndex[code]){f[F.link_affaire]=[affaireIndex[code]];aOk++;}
+      else{aMiss++;missA.add(code);}
+    }
+  });
+
+  renderValidation(cOk,cMiss,aOk,aMiss,missC,missA,linkError);
+  showStep('validate');
+}
+
+// ── Rendu validation ──────────────────────────────────────────────────────────
+function renderValidation(cOk,cMiss,aOk,aMiss,missC,missA,linkError){
+  document.getElementById('statOk').textContent=parsedRecords.length;
+  document.getElementById('statWarn').textContent=warnings.length;
+  document.getElementById('statErr').textContent=criticalErrors.length;
+  document.getElementById('importCount').textContent=parsedRecords.length+' records';
+  if(indexesLoaded){
+    document.getElementById('linkStatsBox').style.display='grid';
+    document.getElementById('linkCollabOk').textContent=cOk;
+    document.getElementById('linkCollabMiss').textContent=cMiss;
+    document.getElementById('linkAffaireOk').textContent=aOk;
+    document.getElementById('linkAffaireMiss').textContent=aMiss;
+  }
+  const box=document.getElementById('alertsBox'); box.innerHTML='';
+  if(linkError) box.innerHTML+=`<div class="alert-list"><div class="alert-header warn">⚠️ Référentiels non chargés (${linkError}) — import sans liens</div></div>`;
+  if(!indexesLoaded&&!linkError) box.innerHTML+=`<div class="alert-list"><div class="alert-header info">ℹ️ Token non configuré — liens non résolus. Allez dans Paramètres.</div></div>`;
+  if(criticalErrors.length){let h=`<div class="alert-list"><div class="alert-header err">❌ ${criticalErrors.length} erreur(s) critique(s)</div>`;criticalErrors.forEach(e=>h+=`<div class="alert-row"><span class="badge badge-err">L.${e.line}</span>${e.msg}</div>`);box.innerHTML+=h+'</div>';}
+  if(warnings.length){let h=`<div class="alert-list"><div class="alert-header warn">⚠️ ${warnings.length} alerte(s)</div>`;warnings.slice(0,15).forEach(w=>h+=`<div class="alert-row"><span class="badge badge-warn">L.${w.line}</span>${w.msg}</div>`);if(warnings.length>15)h+=`<div class="alert-row" style="color:var(--noir70)">… et ${warnings.length-15} autres</div>`;box.innerHTML+=h+'</div>';}
+  if(missC.size){let h=`<div class="alert-list"><div class="alert-header warn">👤 ${missC.size} collaborateur(s) non trouvé(s) — lien vide</div>`;[...missC].slice(0,8).forEach(k=>h+=`<div class="alert-row"><span class="badge badge-info">COLLAB</span>${k}</div>`);if(missC.size>8)h+=`<div class="alert-row" style="color:var(--noir70)">… et ${missC.size-8} autres</div>`;box.innerHTML+=h+'</div>';}
+  if(missA.size){let h=`<div class="alert-list"><div class="alert-header warn">📁 ${missA.size} affaire(s) non trouvée(s) — lien vide</div>`;[...missA].slice(0,8).forEach(k=>h+=`<div class="alert-row"><span class="badge badge-info">AFFAIRE</span>${k}</div>`);if(missA.size>8)h+=`<div class="alert-row" style="color:var(--noir70)">… et ${missA.size-8} autres</div>`;box.innerHTML+=h+'</div>';}
+  if(!criticalErrors.length&&!warnings.length&&!missC.size&&!missA.size&&indexesLoaded) box.innerHTML=`<div class="alert-list"><div class="alert-header ok">✅ Aucune anomalie — tous les liens résolus</div></div>`;
+  // Aperçu
+  let th='<thead><tr><th>Prénom</th><th>Jour</th><th>Code projet</th><th>Temps</th><th>Collaborateur</th><th>Affaire</th></tr></thead><tbody>';
+  parsedRecords.slice(0,10).forEach(r=>{
+    const f=r.fields;
+    const cl=f[F.link_collab] ?`<td class="linked">✓ ${r._collabKey||''}</td>`:`<td class="unlinked">— ${r._collabKey||''}</td>`;
+    const al=f[F.link_affaire]?`<td class="linked">✓ ${r._affaireKey||''}</td>`:`<td class="unlinked">— ${r._affaireKey||''}</td>`;
+    th+=`<tr><td>${f[F.prenom]||''}</td><td>${f[F.jour]||''}</td><td>${f[F.code_projet]||''}</td><td>${f[F.temps]||''}</td>${cl}${al}</tr>`;
+  });
+  document.getElementById('previewTable').innerHTML=th+'</tbody>';
+  document.getElementById('btnImport').disabled=parsedRecords.length===0;
+}
+
+// ── Import ────────────────────────────────────────────────────────────────────
+function addLog(msg,type='info'){
+  const box=document.getElementById('logBox');
+  const l=document.createElement('div'); l.className='log-'+type;
+  l.textContent=new Date().toLocaleTimeString('fr-FR')+'  '+msg;
+  box.appendChild(l); box.scrollTop=box.scrollHeight;
+}
+
+async function runImport(){
+  const token=getToken();
+  if(!token){alert('⚠️ Token manquant — allez dans Paramètres.');showStep('settings');return;}
+  document.getElementById('importReady').style.display='none';
+  document.getElementById('importProgress').style.display='block';
+  const total=parsedRecords.length;
+  const batches=[];for(let i=0;i<total;i+=BATCH)batches.push(parsedRecords.slice(i,i+BATCH));
+  let success=0, errors=0;
+  addLog(`Démarrage — ${total} records, ${batches.length} batches`,'info');
+  if(!indexesLoaded){
+    addLog('Chargement des référentiels…','info');
+    try{await loadIndexes(token);addLog(`Index chargés — ${Object.keys(collabIndex).length} collabs, ${Object.keys(affaireIndex).length} affaires`,'ok');}
+    catch(e){addLog('Index non chargés : '+e.message,'warn');}
+  }else{
+    addLog(`Index chargés — ${Object.keys(collabIndex).length} collabs, ${Object.keys(affaireIndex).length} affaires`,'ok');
+  }
+  for(let i=0;i<batches.length;i++){
+    const batch=batches[i].map(r=>({fields:r.fields}));
+    try{
+      const resp=await fetch(`https://api.airtable.com/v0/${BASE_ID}/${TABLE_TPS_W}`,{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({records:batch,typecast:true})});
+      const data=await resp.json();
+      if(resp.ok){success+=data.records.length;addLog(`Batch ${i+1}/${batches.length} — ${data.records.length} créés`,'ok');}
+      else{errors+=batch.length;addLog(`Batch ${i+1} erreur ${resp.status}: ${data.error?.message||''}`, 'err');}
+    }catch(e){errors+=batch.length;addLog(`Batch ${i+1} exception: ${e.message}`,'err');}
+    const pct=Math.round((i+1)/batches.length*100);
+    document.getElementById('progressBar').style.width=pct+'%';
+    document.getElementById('progressText').textContent=`${success} / ${total} (${pct}%)`;
+    await new Promise(r=>setTimeout(r,150));
+  }
+  addLog(`Terminé — ${success} importés, ${errors} erreurs`,errors>0?'warn':'ok');
+  const cL=parsedRecords.filter(r=>r.fields[F.link_collab]).length;
+  const aL=parsedRecords.filter(r=>r.fields[F.link_affaire]).length;
+  document.getElementById('importResult').innerHTML=`<div class="result-banner ${errors===0?'success':'partial'}"><div class="result-icon">${errors===0?'✅':'⚠️'}</div><div><div class="result-title">${errors===0?'Import réussi !':'Import partiel'}</div><div class="result-sub">${success} record(s) créés dans Tps W<br>${cL} lien(s) Collaborateur · ${aL} lien(s) Affaire${errors>0?`<br><span style="color:var(--rouge)">${errors} erreur(s)</span>`:''}</div></div></div>`;
+  document.getElementById('importResult').style.display='block';
+  document.getElementById('importBackBtn').style.display='flex';
+}
+
+function resetAll(){
+  parsedRecords=[]; warnings=[]; criticalErrors=[]; collabIndex={}; affaireIndex={}; indexesLoaded=false; window._currentFile=null;
+  ['fileInfo','importProgress','importResult','importBackBtn'].forEach(id=>document.getElementById(id).style.display='none');
+  document.getElementById('linkStatsBox').style.display='none';
+  document.getElementById('importReady').style.display='block';
+  document.getElementById('btnValidate').disabled=true;
+  document.getElementById('logBox').innerHTML='';
+  document.getElementById('progressBar').style.width='0%';
+  document.getElementById('fileInput').value='';
+  showStep('upload');
+}
+</script>
+</body>
+</html>
