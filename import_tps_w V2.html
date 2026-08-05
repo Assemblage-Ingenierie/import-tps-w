@@ -80,7 +80,10 @@
   .nav-sep { height: 1px; background: rgba(255,255,255,.1); margin: 8px 20px; }
 
   /* ── CONTENT ── */
-  main { flex: 1; padding: 32px; max-width: 980px; }
+  /* min-width:0 — sans quoi un élément flex refuse de descendre sous la largeur
+     intrinsèque de ses tableaux et pousse la page en débordement horizontal.
+     Les conteneurs .bil-wrap / .preview-wrap prennent alors le relais en scroll. */
+  main { flex: 1; min-width: 0; padding: 32px; max-width: 980px; }
 
   .step { display: none; }
   .step.active { display: block; }
@@ -221,12 +224,78 @@
   .find-slot { font-weight: 400; color: var(--noir70); }
   .find-msg { flex: 1; color: var(--noir70); line-height: 1.5; }
   .find-tag { flex-shrink: 0; }
+  /* ── BILAN (document interne) ── */
+  .interne-banner {
+    background: var(--violet); color: white; border-radius: 6px;
+    padding: 12px 18px; margin-bottom: 20px; font-size: 12.5px; line-height: 1.5;
+    border-left: 4px solid var(--rouge);
+  }
+  .interne-banner strong { color: #ffb3b8; }
+
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  @media (max-width: 900px) { .kpi-row { grid-template-columns: repeat(2, 1fr); } }
+  .kpi { background: white; border-radius: 6px; padding: 15px 18px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .kpi-n { font-size: 24px; font-weight: 700; color: var(--violet); }
+  .kpi-l { font-size: 11.5px; color: var(--noir70); margin-top: 3px; line-height: 1.4; }
+  .kpi.accent { border-top: 3px solid var(--rouge); }
+
+  /* barre empilée 100 % */
+  .bar { display: flex; height: 22px; border-radius: 3px; overflow: hidden; background: var(--gris); position: relative; }
+  .bar-seg { height: 100%; }
+  .bar-wrap { position: relative; }
+  /* repère équipe */
+  .bar-ref {
+    position: absolute; top: -3px; bottom: -3px; width: 0;
+    border-left: 2px dashed var(--violet); pointer-events: none;
+  }
+  .bar-ref::after {
+    content: attr(data-l); position: absolute; top: -15px; left: 3px;
+    font-size: 9.5px; font-weight: 700; color: var(--violet); white-space: nowrap;
+  }
+
+  .bil-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .bil-table th {
+    background: var(--violet); color: white; padding: 9px 10px;
+    text-align: left; font-weight: 600; font-size: 11.5px;
+    text-transform: uppercase; letter-spacing: .03em;
+  }
+  .bil-table th.num, .bil-table td.num { text-align: right; }
+  .bil-table th, .bil-table td.num { white-space: nowrap; }
+  /* largeurs planchers : au-delà, .bil-wrap scrolle plutôt que d'écraser les colonnes */
+  .bil-table.wide  { min-width: 700px; }
+  .bil-table.wider { min-width: 830px; }
+  .bil-table td { padding: 9px 10px; border-bottom: 1px solid var(--gris-leger); vertical-align: middle; }
+  .bil-table tr:hover td { background: #fafbfc; }
+  .bil-table .nom { font-weight: 600; white-space: nowrap; }
+  .bil-table .pct { font-weight: 700; }
+  .bil-wrap { background: white; border-radius: 6px; overflow: auto; box-shadow: 0 1px 3px rgba(0,0,0,.08); margin-bottom: 20px; }
+  .row-faible { background: #fffdf5; }
+  .row-faible .nom::after {
+    content: ' ⚠'; color: var(--orange);
+  }
+  .note-faible { font-size: 11px; color: var(--orange); font-weight: 600; }
+
+  .cat-legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--noir70); margin-bottom: 16px; }
+  .cat-legend span.sw { display: inline-block; width: 11px; height: 11px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+
+  .aff-list { font-size: 12px; color: var(--noir70); line-height: 1.6; }
+  .aff-list .code { font-weight: 700; color: var(--violet); }
+  .pole-tag {
+    font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 8px;
+    background: var(--gris); color: var(--violet); margin-left: 4px;
+  }
+  .pole-STR { background: #ffe8d6; color: #b35309; }
+  .pole-ENV { background: #d9f2e3; color: #1b6e42; }
+  .pole-DEV { background: #dbeafe; color: #1e4fa3; }
+  .etat-alerte { color: var(--rouge); font-weight: 700; }
+
   .legend-grid { display: grid; gap: 8px; font-size: 12.5px; color: var(--noir70); line-height: 1.5; }
   .legend-grid strong { color: var(--violet); }
   .tag-A { background: var(--rouge-clair); color: var(--rouge); }
   .tag-B { background: #fff3e0; color: var(--orange); }
   .tag-C { background: #e3f2fd; color: #1565c0; }
   .tag-D { background: #f3e5f5; color: #7b1fa2; }
+  .tag-E { background: #ede7f6; color: #4527a0; }
 
   /* ── PROGRESS / LOG ── */
   .progress-wrap { background: var(--gris); border-radius: 20px; height: 10px; overflow: hidden; margin: 16px 0; }
@@ -281,9 +350,14 @@
     .emp-card { box-shadow: none; border: 1px solid #ccc; break-inside: avoid; page-break-inside: avoid; }
     .emp-head { background: #30323E !important; }
     .emp-card.ignored { display: none !important; }
-    #printHeader { display: block !important; margin-bottom: 18px; }
+    #printHeader, #printHeaderBilan { display: block !important; margin-bottom: 18px; }
+    /* le bandeau « document interne » doit rester visible sur le papier */
+    .interne-banner { background: #30323E !important; color: #fff !important; }
+    .card, .kpi-row, .bil-wrap { break-inside: avoid; page-break-inside: avoid; }
+    .bil-wrap { overflow: visible !important; max-height: none !important; }
+    .bil-table th { background: #30323E !important; color: #fff !important; }
   }
-  #printHeader { display: none; }
+  #printHeader, #printHeaderBilan { display: none; }
 </style>
 </head>
 <body>
@@ -301,6 +375,10 @@
     <div class="nav-item" onclick="showStep('report')" id="nav-report">
       <span class="icon">⚠️</span> Contrôles
       <span class="pill zero" id="pillReport">—</span>
+    </div>
+    <div class="nav-item" onclick="showStep('bilan')" id="nav-bilan">
+      <span class="icon">📊</span> Bilan du mois
+      <span class="pill zero" id="pillBilan">🔒</span>
     </div>
     <div class="nav-item" onclick="showStep('validate')" id="nav-validate">
       <span class="icon">🔗</span> Liens Airtable
@@ -410,8 +488,43 @@
           <div><span class="badge find-tag tag-B">B</span> <strong>Weekend / jour férié</strong> — possible, mais à confirmer.</div>
           <div><span class="badge find-tag tag-C">C</span> <strong>Saisie incomplète</strong> — demi-journée ou journée non renseignée, sans absence correspondante dans Payfit.</div>
           <div><span class="badge find-tag tag-D">D</span> <strong>Travail pendant une absence</strong> — temps saisi sur un créneau déclaré absent dans Payfit.</div>
+          <div><span class="badge find-tag tag-E">E</span> <strong>Affaire clôturée</strong> — temps saisi sur une affaire terminée, annulée ou interrompue.</div>
         </div>
       </div>
+    </div>
+
+    <!-- ══ BILAN DU MOIS (document interne) ══ -->
+    <div class="step" id="step-bilan">
+      <div id="printHeaderBilan">
+        <div style="display:flex;align-items:center;gap:12px;border-bottom:3px solid #E30513;padding-bottom:10px;">
+          <div style="width:34px;height:34px;background:#E30513;border-radius:4px;display:flex;align-items:center;justify-content:center;">
+            <span style="color:#fff;font-weight:700;font-size:15px;letter-spacing:-1px;">.A</span>
+          </div>
+          <div>
+            <div style="font-size:15px;font-weight:700;">Bilan mensuel — facturabilité</div>
+            <div style="font-size:11px;color:#4D4D4D;" id="printPeriodBilan"></div>
+          </div>
+          <div style="margin-left:auto;font-size:10px;font-weight:700;color:#E30513;border:1px solid #E30513;padding:3px 8px;border-radius:3px;">
+            DOCUMENT INTERNE
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title">Bilan du mois</div>
+
+      <div class="interne-banner">
+        🔒 <strong>Document interne — ne pas diffuser.</strong>
+        Cette page contient des montants nominatifs issus des coûts journaliers Airtable.
+        Les exports du rapport de contrôles (étape 2) n'en reprennent aucun élément.
+      </div>
+
+      <div class="rep-toolbar">
+        <div class="spacer"></div>
+        <button class="btn btn-secondary btn-sm" onclick="printBilan()">🖨️ PDF</button>
+        <button class="btn btn-secondary btn-sm" onclick="exportBilanXlsx()">📗 Excel</button>
+      </div>
+
+      <div id="bilanBody"></div>
     </div>
 
     <!-- ══ ÉTAPE 3 : LIENS AIRTABLE ══ -->
@@ -592,8 +705,13 @@ const F = {
   link_collab:  'fldxbwDTTZvXhbPtv',  // Collaborateur (link)
   link_affaire: 'fldl5Hmib4WzWKha0',  // Affaire (Link)
 };
-const F_COLLAB_KEY  = 'fld9WrKGu5VYU3sOy'; // ID Collab-Exercice dans Collaborateur
-const F_AFFAIRE_KEY = 'fld3POCst63t3kpBv'; // Clef dans Affaire
+const F_COLLAB_KEY    = 'fld9WrKGu5VYU3sOy'; // ID Collab-Exercice dans Collaborateur
+const F_COLLAB_PRENOM = 'fldcAbK39iODSUAwP'; // Prénom
+const F_COLLAB_COUT   = 'fld5WfohdX3XFHRD2'; // Cout journalier (€/jour)
+const F_AFFAIRE_KEY   = 'fld3POCst63t3kpBv'; // Clef dans Affaire
+const F_AFFAIRE_POLE  = 'fldJyT3Lu0ZEH7EYE'; // Pôle : STR / ENV / DEV / Autre / AI BOIS
+const F_AFFAIRE_ETAT  = 'fldlMVWpA50MXa66M'; // Etat interne
+const F_AFFAIRE_NOM   = 'fldtSnDRkwS4dkcsa'; // Nom affaire (sans la clef)
 
 // Colonnes de l'onglet Détails de l'export Payfit.
 // NB : « Heure de début » ne contient pas une heure mais le créneau
@@ -612,6 +730,44 @@ const FIELD_MAP = [
   { col: 10, label: 'Heure de fin',            id: F.h_fin,       type: 'select' },
 ];
 
+// ── Classification des codes projet ────────────────────────────────────────
+// Les 4 catégories non facturables reprennent le modèle Airtable
+// (% Non productif = RDF + Gestion + Prospection / jours travaillés), auquel
+// on ajoute IA, absente de cette formule alors que l'activité existe.
+const CAT_NF = {
+  'AXXX': { label: 'Prospection',               color: '#e67e22' },
+  'RDF':  { label: 'R&D - Formation',           color: '#8e44ad' },
+  'IA':   { label: 'Intelligence artificielle', color: '#16a085' },
+  'A000': { label: 'Gestion',                   color: '#7f8c8d' },
+};
+const COL_FACT = '#27ae60';
+const COL_NONE = '#E30513';
+
+// Codes exclus du bilan : ce n'est pas du temps de travail. Ils restent
+// comptés comme couverture par la règle C (une journée déclarée en congé
+// n'est pas une journée manquante) et sont importés normalement.
+const CODES_HORS_BILAN = new Set(['CONGE PE']);
+
+// États d'affaire sur lesquels du temps saisi est presque toujours une erreur
+const ETATS_ALERTE = new Set(['Terminé', 'Annulé', 'Interrompu']);
+
+function classifyCode(code) {
+  const c = String(code || '').trim();
+  if (!c) return { type: 'NONE' };
+  if (CODES_HORS_BILAN.has(c)) return { type: 'HORS' };
+  if (CAT_NF[c]) return { type: 'NF', cat: c };
+  return { type: 'FACT' };
+}
+
+// Pôle : valeur Airtable si disponible, sinon déduite du suffixe du code
+// (A717S → STR, A629E → ENV, A031D_2 → DEV). Couvre 100 % des codes observés.
+function poleOf(code) {
+  const meta = affaireMeta[code];
+  if (meta && meta.pole) return meta.pole;
+  const m = String(code || '').match(/^A?\d+([SED])(?:_\d+)?$/);
+  return m ? { S: 'STR', E: 'ENV', D: 'DEV' }[m[1]] : null;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 //  STATE
 // ═══════════════════════════════════════════════════════════════════════════
@@ -619,6 +775,9 @@ let parsedRecords = [];    // records prêts pour Airtable : { fields, _line, _s
 let warnings = [];
 let criticalErrors = [];
 let collabIndex = {}, affaireIndex = {}, indexesLoaded = false;
+let affaireMeta = {};      // clef → { pole, etat, nom }
+let collabMeta  = {};      // "Prénom - exercice" → { prenom, cout }
+let bilan = null;          // résultat de buildBilan()
 
 let absenceIndex = null;   // { NOMNORM: Set("YYYY-MM-DD|AM") } — null si pas de .ics
 let icsMeta = null;        // { events, people, min, max }
@@ -990,9 +1149,11 @@ async function runAnalyse() {
     }
   });
 
-  // ── 6. Moteur de règles + rendus
+  // ── 6. Moteur de règles + bilan + rendus
   findings = runRules();
+  bilan = buildBilan();
   renderReport();
+  renderBilan();
   renderValidation(cOk, cMiss, aOk, aMiss, missC, missA, linkError);
   showStep('report');
 }
@@ -1015,7 +1176,9 @@ function onPeriodChange() {
   if (!/^\d{4}-\d{2}$/.test(v)) return;
   refPeriod = v;
   findings = runRules();
+  bilan = buildBilan();
   renderReport();
+  renderBilan();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1090,6 +1253,41 @@ function runRules() {
       line: r._line,
     });
   });
+
+  // ── Règle E : temps saisi sur une affaire terminée, annulée ou interrompue
+  //    (nécessite Airtable pour connaître l'état interne de l'affaire)
+  //    Regroupé par salarié et par affaire : une affaire clôturée sur laquelle
+  //    quelqu'un pointe tout le mois ne doit produire qu'une ligne, pas trente.
+  if (indexesLoaded) {
+    const parAff = {};
+    parsedRecords.forEach(r => {
+      if (!inPeriod(r)) return;
+      const code = r.fields[F.code_projet] || '';
+      const m = affaireMeta[code];
+      if (!m || !m.etat || !ETATS_ALERTE.has(m.etat)) return;
+      const k = r._full + '|' + code;
+      const g = parAff[k] || (parAff[k] = { full: r._full, code, meta: m, jours: 0, dates: [], lignes: [] });
+      g.jours += Number(r.fields[F.temps]) || 0;
+      g.dates.push(r.fields[F.jour]);
+      g.lignes.push(r._line);
+    });
+
+    Object.values(parAff).forEach(g => {
+      g.dates.sort();
+      const n = g.dates.length;
+      const quand = n === 1
+        ? frDateLong(g.dates[0])
+        : `${n} saisies, du ${frDateLong(g.dates[0])} au ${frDateLong(g.dates[n-1])}`;
+      out.push({
+        full: g.full, jour: g.dates[0], slot: null, rule: 'E',
+        when: quand, slotTxt: `${nb(g.jours)} j au total`,
+        msg: `Temps saisi sur l'affaire ${g.code}${g.meta.nom ? ' (' + g.meta.nom + ')' : ''}, `
+           + `dont l'état est « ${g.meta.etat} ». Merci de vérifier le code projet : `
+           + `ce temps risque de ne pas être facturable.`,
+        line: g.lignes.length === 1 ? g.lignes[0] : null,
+      });
+    });
+  }
 
   // ── Règles C & D : bilan par jour ouvré (nécessitent le calendrier des congés)
   if (refPeriod) {
@@ -1199,6 +1397,309 @@ function compactRuns(days, idx) {
     else { cur = { days: [d] }; runs.push(cur); }
   }
   return runs;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  BILAN DU MOIS
+// ═══════════════════════════════════════════════════════════════════════════
+function buildBilan() {
+  if (!parsedRecords.length || !refPeriod) return null;
+
+  const ouvres = joursOuvres(refPeriod);
+  const people = {};
+
+  for (const r of parsedRecords) {
+    const j = r.fields[F.jour];
+    if (!j || j.slice(0, 7) !== refPeriod) continue;   // le bilan porte sur la période annoncée
+    const nom = r._full;
+    if (!nom) continue;
+
+    const p = people[nom] || (people[nom] = {
+      nom, decl: 0, conge: 0, fact: 0, nf: {}, none: 0,
+      aff: {}, poles: {}, cout: null,
+    });
+
+    const t = Number(r.fields[F.temps]) || 0;
+    const code = r.fields[F.code_projet] || '';
+    const k = classifyCode(code);
+
+    if (k.type === 'HORS') { p.conge += t; continue; }
+
+    p.decl += t;
+    if (k.type === 'FACT') {
+      p.fact += t;
+      p.aff[code] = (p.aff[code] || 0) + t;
+      const pole = poleOf(code) || 'Autre';
+      p.poles[pole] = (p.poles[pole] || 0) + t;
+    } else if (k.type === 'NF') {
+      p.nf[k.cat] = (p.nf[k.cat] || 0) + t;
+    } else {
+      p.none += t;
+    }
+  }
+
+  // Coût journalier + repère de complétude de la saisie
+  for (const p of Object.values(people)) {
+    const key = calcCollabKey(prenomDe(p.nom), refPeriod + '-15');
+    p.cout = (key && collabMeta[key] && collabMeta[key].cout) || null;
+
+    const nameNorm = normName(p.nom);
+    let absJours = 0;
+    if (absenceIndex) ouvres.forEach(d => { absJours += absFraction(nameNorm, d); });
+    p.attendu = Math.max(0, ouvres.length - absJours);
+    p.couvert = p.decl + p.conge;
+    // taux jugé non significatif si moins de la moitié du mois est renseignée
+    p.faible = p.attendu > 0 && p.couvert < p.attendu * 0.5;
+
+    p.tauxFact = p.decl ? p.fact / p.decl : 0;
+    p.coutDecl = p.cout ? p.cout * p.decl : null;
+    p.coutNF   = p.cout ? p.cout * (p.decl - p.fact) : null;
+  }
+
+  // ── Agrégats équipe
+  const team = {
+    decl: 0, fact: 0, conge: 0, none: 0, nf: {}, poles: {},
+    coutDecl: 0, coutNF: 0, coutInconnu: [],
+  };
+  for (const p of Object.values(people)) {
+    team.decl += p.decl; team.fact += p.fact; team.conge += p.conge; team.none += p.none;
+    Object.entries(p.nf).forEach(([c, v]) => team.nf[c] = (team.nf[c] || 0) + v);
+    Object.entries(p.poles).forEach(([c, v]) => team.poles[c] = (team.poles[c] || 0) + v);
+    if (p.coutDecl == null) team.coutInconnu.push(p.nom);
+    else { team.coutDecl += p.coutDecl; team.coutNF += p.coutNF; }
+  }
+  team.tauxFact = team.decl ? team.fact / team.decl : 0;
+  // Aucun coût connu : on distingue « indisponible » de « zéro »
+  team.coutAucun = team.coutInconnu.length === Object.keys(people).length;
+  if (team.coutAucun) { team.coutDecl = null; team.coutNF = null; }
+
+  // ── Affaires : charge, intervenants, état
+  const aff = {};
+  for (const p of Object.values(people)) {
+    Object.entries(p.aff).forEach(([code, v]) => {
+      const a = aff[code] || (aff[code] = { code, jours: 0, qui: new Set() });
+      a.jours += v; a.qui.add(p.nom);
+    });
+  }
+  const affaires = Object.values(aff).map(a => {
+    const m = affaireMeta[a.code] || {};
+    return {
+      ...a,
+      pole: poleOf(a.code),
+      etat: m.etat || null,
+      nom: m.nom || nomProjetDe(a.code) || '',
+      part: team.fact ? a.jours / team.fact : 0,
+    };
+  }).sort((x, y) => y.jours - x.jours);
+
+  // Affaires portées par une seule personne au-delà d'un seuil significatif
+  const dependances = affaires.filter(a => a.qui.size === 1 && a.jours > 3);
+
+  return {
+    people: Object.values(people).sort((a, b) => b.tauxFact - a.tauxFact),
+    team, affaires, dependances,
+    joursOuvres: ouvres.length,
+  };
+}
+
+// Le prénom tel qu'il figure dans l'export (première partie de « Prénom NOM »)
+function prenomDe(full) {
+  const r = parsedRecords.find(x => x._full === full);
+  return r ? (r.fields[F.prenom] || '') : String(full).split(' ')[0];
+}
+// Nom de projet issu de l'export, en repli quand Airtable n'est pas joignable
+function nomProjetDe(code) {
+  const r = parsedRecords.find(x => (x.fields[F.code_projet] || '') === code);
+  return r ? (r.fields[F.nom_projet] || '') : '';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  RENDU DU BILAN
+// ═══════════════════════════════════════════════════════════════════════════
+function eur(v) {
+  if (v == null) return '—';
+  return Math.round(v).toLocaleString('fr-FR') + ' €';
+}
+function pct(v) { return (v * 100).toFixed(0) + ' %'; }
+
+// Barre empilée : facturable puis chaque catégorie non facturable
+function barreHtml(p, refPct) {
+  const segs = [];
+  if (p.fact) segs.push({ v: p.fact, c: COL_FACT, t: `Facturable ${nb(p.fact)} j` });
+  Object.keys(CAT_NF).forEach(k => {
+    if (p.nf[k]) segs.push({ v: p.nf[k], c: CAT_NF[k].color, t: `${CAT_NF[k].label} ${nb(p.nf[k])} j` });
+  });
+  if (p.none) segs.push({ v: p.none, c: COL_NONE, t: `Non affecté ${nb(p.none)} j` });
+
+  const tot = segs.reduce((s, x) => s + x.v, 0) || 1;
+  let h = '<div class="bar-wrap"><div class="bar">';
+  segs.forEach(s => {
+    h += `<div class="bar-seg" style="width:${(s.v / tot * 100).toFixed(2)}%;background:${s.c}" title="${esc(s.t)}"></div>`;
+  });
+  h += '</div>';
+  if (refPct != null) h += `<div class="bar-ref" style="left:${(refPct * 100).toFixed(2)}%"></div>`;
+  return h + '</div>';
+}
+
+function renderBilan() {
+  const box = document.getElementById('bilanBody');
+  const pill = document.getElementById('pillBilan');
+  if (!bilan) {
+    box.innerHTML = `<div class="alert-list"><div class="alert-header info">
+      ℹ️ Aucun fichier analysé — commencer par l'étape 1.</div></div>`;
+    pill.textContent = '🔒'; pill.className = 'pill zero';
+    return;
+  }
+  const { people, team, affaires, dependances } = bilan;
+  document.getElementById('printPeriodBilan').textContent =
+    `Assemblage ingénierie — ${frMonth(refPeriod)} · ${bilan.joursOuvres} jours ouvrés`;
+  pill.textContent = pct(team.tauxFact);
+  pill.className = 'pill';
+
+  let h = '';
+
+  // ── KPI
+  const nfTot = team.decl - team.fact;
+  h += `<div class="kpi-row">
+    <div class="kpi accent"><div class="kpi-n">${pct(team.tauxFact)}</div>
+      <div class="kpi-l">Taux de facturabilité équipe<br>${nb(team.fact)} j sur ${nb(team.decl)} j déclarés</div></div>
+    <div class="kpi"><div class="kpi-n">${nb(nfTot)} j</div>
+      <div class="kpi-l">Temps non facturable<br>${pct(team.decl ? nfTot / team.decl : 0)} du temps déclaré</div></div>
+    <div class="kpi"><div class="kpi-n">${eur(team.coutDecl)}</div>
+      <div class="kpi-l">Coût du temps déclaré<br>au coût de revient journalier</div></div>
+    <div class="kpi"><div class="kpi-n">${eur(team.coutNF)}</div>
+      <div class="kpi-l">dont non facturable<br>${team.coutDecl ? pct(team.coutNF / team.coutDecl) : '—'} du coût</div></div>
+  </div>`;
+
+  if (team.coutAucun) {
+    h += `<div class="alert-list"><div class="alert-header info">
+      ℹ️ Coûts journaliers indisponibles — renseigner le token Airtable dans les Paramètres
+      pour valoriser le temps en euros. Le bilan reste complet en jours.</div></div>`;
+  } else if (team.coutInconnu.length) {
+    h += `<div class="alert-list"><div class="alert-header warn">
+      ⚠️ Coût journalier introuvable pour ${team.coutInconnu.length} salarié(s) — exclus des montants :
+      ${esc(team.coutInconnu.join(', '))}. Vérifier que leur fiche Collaborateur existe
+      pour l'exercice ${esc(calcExercice(refPeriod + '-15'))}.</div></div>`;
+  }
+  if (team.conge) {
+    h += `<div class="alert-list"><div class="alert-header info">
+      ℹ️ ${nb(team.conge)} j de CONGE PE exclus du bilan (comptés comme journées couvertes dans les contrôles).</div></div>`;
+  }
+
+  // ── Répartition des catégories non facturables
+  h += `<div class="card"><div class="card-title">Répartition du temps déclaré</div>
+    <div class="cat-legend">
+      <span><span class="sw" style="background:${COL_FACT}"></span>Facturable</span>`;
+  Object.keys(CAT_NF).forEach(k => {
+    h += `<span><span class="sw" style="background:${CAT_NF[k].color}"></span>${esc(CAT_NF[k].label)}</span>`;
+  });
+  if (team.none) h += `<span><span class="sw" style="background:${COL_NONE}"></span>Non affecté</span>`;
+  h += `</div>${barreHtml({ fact: team.fact, nf: team.nf, none: team.none }, null)}
+    <table class="bil-table" style="margin-top:16px">
+      <thead><tr><th>Catégorie</th><th class="num">Jours</th><th class="num">% du déclaré</th><th class="num">Coût</th></tr></thead><tbody>`;
+  const lignes = [{ label: 'Facturable', j: team.fact, c: COL_FACT }]
+    .concat(Object.keys(CAT_NF).filter(k => team.nf[k])
+      .map(k => ({ label: CAT_NF[k].label, j: team.nf[k], c: CAT_NF[k].color })));
+  if (team.none) lignes.push({ label: 'Non affecté', j: team.none, c: COL_NONE });
+  lignes.forEach(l => {
+    const part = team.decl ? l.j / team.decl : 0;
+    h += `<tr><td><span class="sw" style="display:inline-block;width:11px;height:11px;border-radius:2px;background:${l.c};margin-right:6px"></span>${esc(l.label)}</td>
+      <td class="num">${nb(l.j)}</td><td class="num">${pct(part)}</td>
+      <td class="num">${team.coutDecl ? eur(team.coutDecl * part) : '—'}</td></tr>`;
+  });
+  h += `</tbody></table></div>`;
+
+  // ── Répartition par pôle
+  const poleTot = Object.values(team.poles).reduce((a, b) => a + b, 0);
+  if (poleTot) {
+    h += `<div class="card"><div class="card-title">Répartition du temps facturable par pôle</div>
+      <table class="bil-table"><thead><tr><th>Pôle</th><th class="num">Jours</th><th class="num">Part</th></tr></thead><tbody>`;
+    Object.entries(team.poles).sort((a, b) => b[1] - a[1]).forEach(([k, v]) => {
+      h += `<tr><td><span class="pole-tag pole-${esc(k)}">${esc(k)}</span></td>
+        <td class="num">${nb(v)}</td><td class="num">${pct(v / poleTot)}</td></tr>`;
+    });
+    h += `</tbody></table>`;
+    if (!poleModeAirtable()) {
+      h += `<div class="hint">Pôle déduit du suffixe du code projet — connecter le token Airtable pour utiliser le champ Pôle de la table Affaire.</div>`;
+    }
+    h += `</div>`;
+  }
+
+  // ── Tableau par salarié
+  h += `<div class="card"><div class="card-title">Par salarié — trié par taux de facturabilité</div>
+    <div class="cat-legend"><span>Repère pointillé = taux équipe (${pct(team.tauxFact)})</span></div>
+    <div class="bil-wrap"><table class="bil-table wide">
+      <thead><tr>
+        <th>Salarié</th><th style="width:170px">Répartition</th>
+        <th class="num">Taux</th><th class="num">Fact.</th><th class="num">Déclaré</th>
+        <th class="num">Coût NF</th><th>Affaires</th>
+      </tr></thead><tbody>`;
+  people.forEach(p => {
+    h += `<tr class="${p.faible ? 'row-faible' : ''}">
+      <td class="nom">${esc(p.nom)}${p.faible ? `<br><span class="note-faible">saisie incomplète</span>` : ''}</td>
+      <td>${barreHtml(p, team.tauxFact)}</td>
+      <td class="num pct">${p.faible ? '<span style="color:var(--orange)">' + pct(p.tauxFact) + '</span>' : pct(p.tauxFact)}</td>
+      <td class="num">${nb(p.fact)} j</td>
+      <td class="num">${nb(p.decl)} j${p.conge ? `<br><span style="font-size:10.5px;color:var(--noir70)">+${nb(p.conge)} congé</span>` : ''}</td>
+      <td class="num">${eur(p.coutNF)}</td>
+      <td class="num">${Object.keys(p.aff).length}</td>
+    </tr>`;
+  });
+  h += `</tbody></table></div></div>`;
+
+  // ── Détail des affaires par salarié
+  h += `<div class="card"><div class="card-title">Affaires travaillées, par salarié</div>`;
+  people.slice().sort((a, b) => a.nom.localeCompare(b.nom, 'fr')).forEach(p => {
+    const list = Object.entries(p.aff).sort((a, b) => b[1] - a[1]);
+    h += `<div style="margin-bottom:14px">
+      <div style="font-weight:700;font-size:13px;margin-bottom:4px">${esc(p.nom)}
+        <span style="font-weight:400;color:var(--noir70);font-size:12px">— ${nb(p.fact)} j facturables sur ${list.length} affaire${list.length > 1 ? 's' : ''}</span></div>
+      <div class="aff-list">`;
+    if (!list.length) h += `<em>aucune affaire facturable ce mois</em>`;
+    list.forEach(([code, j]) => {
+      const m = affaireMeta[code] || {};
+      const po = poleOf(code);
+      const alerte = m.etat && ETATS_ALERTE.has(m.etat);
+      h += `<div><span class="code">${esc(code)}</span>${po ? `<span class="pole-tag pole-${esc(po)}">${esc(po)}</span>` : ''}
+        ${esc(m.nom || nomProjetDe(code))} — ${nb(j)} j (${pct(p.fact ? j / p.fact : 0)})
+        ${alerte ? `<span class="etat-alerte">· affaire ${esc(m.etat)}</span>` : ''}</div>`;
+    });
+    h += `</div></div>`;
+  });
+  h += `</div>`;
+
+  // ── Top affaires équipe
+  h += `<div class="card"><div class="card-title">Affaires du mois — charge et intervenants</div>
+    <div class="bil-wrap"><table class="bil-table wider">
+      <thead><tr><th>Code</th><th>Affaire</th><th>Pôle</th><th>État</th>
+        <th class="num">Jours</th><th class="num">Part du facturable</th><th class="num">Intervenants</th></tr></thead><tbody>`;
+  affaires.forEach(a => {
+    const alerte = a.etat && ETATS_ALERTE.has(a.etat);
+    h += `<tr><td class="nom">${esc(a.code)}</td><td>${esc(a.nom)}</td>
+      <td>${a.pole ? `<span class="pole-tag pole-${esc(a.pole)}">${esc(a.pole)}</span>` : '—'}</td>
+      <td class="${alerte ? 'etat-alerte' : ''}">${esc(a.etat || '—')}</td>
+      <td class="num">${nb(a.jours)}</td><td class="num">${pct(a.part)}</td>
+      <td class="num">${a.qui.size}</td></tr>`;
+  });
+  h += `</tbody></table></div></div>`;
+
+  // ── Dépendance à une seule personne
+  if (dependances.length) {
+    h += `<div class="card"><div class="card-title">Affaires portées par une seule personne (plus de 3 j)</div>
+      <div class="aff-list">`;
+    dependances.forEach(a => {
+      h += `<div><span class="code">${esc(a.code)}</span> ${esc(a.nom)} — ${nb(a.jours)} j
+        · <strong>${esc([...a.qui][0])}</strong> seul intervenant</div>`;
+    });
+    h += `</div><div class="hint">Information de continuité d'activité : en cas d'absence, personne d'autre n'a de temps passé sur ces affaires ce mois-ci.</div></div>`;
+  }
+
+  box.innerHTML = h;
+}
+
+// Le pôle vient-il d'Airtable ou du suffixe des codes ?
+function poleModeAirtable() {
+  return indexesLoaded && Object.values(affaireMeta).some(m => m.pole);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1325,6 +1826,7 @@ const RULE_LABEL = {
   B: 'Weekend / jour férié',
   C: 'Saisie incomplète',
   D: 'Travail pendant une absence',
+  E: 'Affaire clôturée',
 };
 
 // ── HTML pour email : styles 100 % inline (les clients mail suppriment <style>)
@@ -1455,29 +1957,119 @@ function exportXlsx() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+//  EXPORTS DU BILAN (document interne — jamais mêlé aux exports diffusés)
+// ═══════════════════════════════════════════════════════════════════════════
+function printBilan() {
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('print-target'));
+  document.getElementById('step-bilan').classList.add('print-target');
+  window.print();
+}
+
+function exportBilanXlsx() {
+  if (!bilan) { flash('Aucun bilan à exporter'); return; }
+  const { people, team, affaires } = bilan;
+  const wb = XLSX.utils.book_new();
+
+  // Feuille 1 — synthèse par salarié
+  const cats = Object.keys(CAT_NF);
+  const h1 = ['Salarié', 'Jours déclarés', 'Facturable', 'Taux facturable']
+    .concat(cats.map(c => CAT_NF[c].label))
+    .concat(['Non affecté', 'CONGE PE', 'Nb affaires', 'Coût journalier',
+             'Coût déclaré', 'Coût non facturable', 'Saisie incomplète']);
+  const a1 = [h1];
+  people.forEach(p => a1.push([
+    p.nom, p.decl, p.fact, p.decl ? p.fact / p.decl : 0,
+    ...cats.map(c => p.nf[c] || 0),
+    p.none, p.conge, Object.keys(p.aff).length,
+    p.cout, p.coutDecl, p.coutNF, p.faible ? 'oui' : '',
+  ]));
+  a1.push([]);
+  a1.push(['ÉQUIPE', team.decl, team.fact, team.tauxFact,
+    ...cats.map(c => team.nf[c] || 0),
+    team.none, team.conge, affaires.length, '', team.coutDecl, team.coutNF, '']);
+  const ws1 = XLSX.utils.aoa_to_sheet(a1);
+  ws1['!cols'] = h1.map((c, i) => ({ wch: i === 0 ? 26 : Math.max(12, c.length + 2) }));
+  XLSX.utils.book_append_sheet(wb, ws1, 'Par salarié');
+
+  // Feuille 2 — affaires
+  const a2 = [['Code', 'Affaire', 'Pôle', 'État', 'Jours', 'Part du facturable', 'Intervenants', 'Qui']];
+  affaires.forEach(a => a2.push([
+    a.code, a.nom, a.pole || '', a.etat || '', a.jours, a.part, a.qui.size, [...a.qui].join(', '),
+  ]));
+  const ws2 = XLSX.utils.aoa_to_sheet(a2);
+  ws2['!cols'] = [{wch:12},{wch:34},{wch:8},{wch:12},{wch:8},{wch:18},{wch:13},{wch:46}];
+  XLSX.utils.book_append_sheet(wb, ws2, 'Affaires');
+
+  // Feuille 3 — détail salarié × affaire
+  const a3 = [['Salarié', 'Code', 'Affaire', 'Pôle', 'État', 'Jours', 'Part de son facturable']];
+  people.slice().sort((x, y) => x.nom.localeCompare(y.nom, 'fr')).forEach(p => {
+    Object.entries(p.aff).sort((x, y) => y[1] - x[1]).forEach(([code, j]) => {
+      const m = affaireMeta[code] || {};
+      a3.push([p.nom, code, m.nom || nomProjetDe(code), poleOf(code) || '', m.etat || '',
+               j, p.fact ? j / p.fact : 0]);
+    });
+  });
+  const ws3 = XLSX.utils.aoa_to_sheet(a3);
+  ws3['!cols'] = [{wch:26},{wch:12},{wch:34},{wch:8},{wch:12},{wch:8},{wch:22}];
+  XLSX.utils.book_append_sheet(wb, ws3, 'Salarié x Affaire');
+
+  XLSX.writeFile(wb, `bilan_interne_${refPeriod || 'export'}.xlsx`);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 //  AIRTABLE — index de liaison
 // ═══════════════════════════════════════════════════════════════════════════
 async function loadIndexes(token) {
-  collabIndex = {}; affaireIndex = {};
+  collabIndex = {}; affaireIndex = {}; affaireMeta = {}; collabMeta = {};
   const headers = { 'Authorization': 'Bearer ' + token };
 
-  async function fetchAll(tableId, fieldId, label) {
-    const index = {};
+  // Récupère toutes les pages d'une table pour la liste de champs demandée
+  async function fetchAll(tableId, fieldIds, label) {
+    const out = [];
     let offset = null;
     do {
-      const p = new URLSearchParams({ 'fields[]': fieldId, pageSize: 100, returnFieldsByFieldId: 'true' });
+      const p = new URLSearchParams({ pageSize: 100, returnFieldsByFieldId: 'true' });
+      fieldIds.forEach(f => p.append('fields[]', f));
       if (offset) p.set('offset', offset);
       const r = await fetch(`https://api.airtable.com/v0/${BASE_ID}/${tableId}?${p}`, { headers });
       const d = await r.json();
       if (!r.ok) throw new Error(`${label}: ${d.error?.message || 'HTTP ' + r.status}`);
-      for (const rec of d.records) { const k = rec.fields[fieldId]; if (k) index[k] = rec.id; }
+      out.push(...d.records);
       offset = d.offset || null;
     } while (offset);
-    return index;
+    return out;
   }
 
-  collabIndex  = await fetchAll(TABLE_COLLAB,  F_COLLAB_KEY,  'Collaborateur');
-  affaireIndex = await fetchAll(TABLE_AFFAIRE, F_AFFAIRE_KEY, 'Affaire');
+  // Un singleSelect revient sous forme d'objet {id, name} ; un lookup sous
+  // forme de tableau. On ramène tout à une chaîne.
+  const plain = v => {
+    if (v == null) return null;
+    if (Array.isArray(v)) return v.length ? plain(v[0]) : null;
+    if (typeof v === 'object') return v.name != null ? v.name : null;
+    return v;
+  };
+
+  for (const rec of await fetchAll(TABLE_COLLAB, [F_COLLAB_KEY, F_COLLAB_PRENOM, F_COLLAB_COUT], 'Collaborateur')) {
+    const k = plain(rec.fields[F_COLLAB_KEY]);
+    if (!k) continue;
+    collabIndex[k] = rec.id;
+    collabMeta[k] = {
+      prenom: plain(rec.fields[F_COLLAB_PRENOM]) || '',
+      cout: Number(rec.fields[F_COLLAB_COUT]) || null,
+    };
+  }
+
+  for (const rec of await fetchAll(TABLE_AFFAIRE, [F_AFFAIRE_KEY, F_AFFAIRE_POLE, F_AFFAIRE_ETAT, F_AFFAIRE_NOM], 'Affaire')) {
+    const k = plain(rec.fields[F_AFFAIRE_KEY]);
+    if (!k) continue;
+    affaireIndex[k] = rec.id;
+    affaireMeta[k] = {
+      pole: plain(rec.fields[F_AFFAIRE_POLE]),
+      etat: plain(rec.fields[F_AFFAIRE_ETAT]),
+      nom:  plain(rec.fields[F_AFFAIRE_NOM]),
+    };
+  }
+
   indexesLoaded = true;
 }
 
@@ -1664,6 +2256,7 @@ async function runImport() {
 function resetAll() {
   parsedRecords = []; warnings = []; criticalErrors = []; findings = []; guards = [];
   collabIndex = {}; affaireIndex = {}; indexesLoaded = false;
+  affaireMeta = {}; collabMeta = {}; bilan = null;
   absenceIndex = null; icsMeta = null; icsText = null;
   excelFile = null; ignoredPeople = new Set(); refPeriod = null;
 
@@ -1685,9 +2278,13 @@ function resetAll() {
   });
   document.getElementById('repBody').innerHTML = '';
   document.getElementById('repNotice').innerHTML = '';
+  document.getElementById('bilanBody').innerHTML = '';
+  document.getElementById('repLegend').style.display = 'none';
   ['repPeople','repFindings','repClean'].forEach(id => document.getElementById(id).textContent = '—');
   const pill = document.getElementById('pillReport');
   pill.textContent = '—'; pill.className = 'pill zero';
+  const pillB = document.getElementById('pillBilan');
+  pillB.textContent = '🔒'; pillB.className = 'pill zero';
   showStep('upload');
 }
 </script>
