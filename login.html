@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Connexion — Import Tps W</title>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --rouge:#E30513; --violet:#30323E; --gris:#DFE4E8; --gris-leger:#F2F2F2; --noir70:#4D4D4D; }
+  *,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+  body {
+    font-family:'Open Sans',sans-serif; background:var(--gris-leger); color:var(--violet);
+    min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  .box {
+    background:white; border-radius:8px; padding:40px 36px; max-width:430px; width:100%;
+    box-shadow:0 2px 16px rgba(0,0,0,.09); border-top:4px solid var(--rouge); text-align:center;
+  }
+  .mark {
+    width:52px; height:52px; background:var(--rouge); border-radius:5px; margin:0 auto 18px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .mark span { color:white; font-weight:700; font-size:23px; letter-spacing:-1px; }
+  h1 { font-size:19px; font-weight:700; margin-bottom:6px; }
+  .sub { font-size:13px; color:var(--noir70); margin-bottom:26px; line-height:1.5; }
+  #gbtn { display:flex; justify-content:center; min-height:44px; }
+  .msg {
+    margin-top:20px; padding:12px 15px; border-radius:5px; font-size:12.5px;
+    line-height:1.55; text-align:left; display:none;
+  }
+  .msg.err  { background:#F9E1E3; color:#a5000c; border-left:3px solid var(--rouge); display:block; }
+  .msg.info { background:var(--gris-leger); color:var(--noir70); border-left:3px solid var(--gris); display:block; }
+  .foot { margin-top:24px; font-size:11px; color:var(--noir70); line-height:1.5; }
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="mark"><span>.A</span></div>
+  <h1>Import Tps W</h1>
+  <div class="sub">Assemblage ingénierie<br>Accès réservé — connexion avec votre compte Google professionnel.</div>
+  <div id="gbtn"></div>
+  <div class="msg" id="msg"></div>
+  <div class="foot">
+    L'accès est limité à une liste d'adresses.<br>
+    Si votre connexion est refusée, demandez votre ajout à l'administrateur de l'outil.
+  </div>
+</div>
+
+<script>
+const msg = document.getElementById('msg');
+function dire(texte, type) { msg.className = 'msg ' + type; msg.innerHTML = texte; }
+
+async function onCredential(reponse) {
+  dire('Vérification…', 'info');
+  try {
+    const r = await fetch('/api/auth/callback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ credential: reponse.credential }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok) { location.replace('/'); return; }
+    dire(`<strong>${d.erreur || 'Connexion refusée'}</strong>` + (d.detail ? `<br>${d.detail}` : ''), 'err');
+  } catch (e) {
+    dire('<strong>Erreur réseau</strong><br>' + e.message, 'err');
+  }
+}
+
+(async () => {
+  let conf = {};
+  try { conf = await (await fetch('/api/me')).json(); } catch {}
+  if (conf.connecte) { location.replace('/'); return; }
+  if (!conf.clientId) {
+    dire('<strong>Application non configurée</strong><br>La variable <code>GOOGLE_CLIENT_ID</code> '
+       + 'n\'est pas définie côté serveur.', 'err');
+    return;
+  }
+  const s = document.createElement('script');
+  s.src = 'https://accounts.google.com/gsi/client';
+  s.async = true;
+  s.onload = () => {
+    google.accounts.id.initialize({
+      client_id: conf.clientId,
+      callback: onCredential,
+      // Indication d'affichage seulement : le domaine est revérifié côté serveur.
+      hd: conf.domaine || undefined,
+    });
+    google.accounts.id.renderButton(document.getElementById('gbtn'), {
+      theme: 'outline', size: 'large', text: 'signin_with', locale: 'fr', width: 280,
+    });
+  };
+  s.onerror = () => dire('<strong>Impossible de charger Google Identity</strong><br>'
+    + 'Vérifiez votre connexion ou un éventuel bloqueur.', 'err');
+  document.head.appendChild(s);
+})();
+</script>
+</body>
+</html>

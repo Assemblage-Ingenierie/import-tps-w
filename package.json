@@ -1,0 +1,14 @@
+{
+  "name": "import-tps-w",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Import des temps de travail Payfit vers Airtable — contrôles de saisie et bilan mensuel de facturabilité",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "jose": "^5.9.6"
+  }
+}

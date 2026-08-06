@@ -1,14 +1,29 @@
-# OS
+# OS / OneDrive
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# Editor
+# Éditeurs
 .vscode/
 .idea/
 *.swp
 *~
 
-# Données locales
+# Outils locaux
+.claude/
+node_modules/
+.vercel/
+
+# Secrets — ne doivent jamais entrer dans le dépôt
+.env
+.env.*
+!.env.example
+
+# Données réelles : exports Payfit et calendriers d'absences.
+# Contiennent les noms, temps et congés des salariés.
 *.xlsx
 *.xls
+*.ics
+
+# Anciennes versions, conservées dans l'historique git
+import_tps_w V*.html

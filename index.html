@@ -48,6 +48,16 @@
   .logo-mark span { color: white; font-weight: 700; font-size: 18px; letter-spacing: -1px; }
   header h1 { font-size: 18px; font-weight: 700; color: var(--violet); line-height: 1.2; }
   header h1 small { display: block; font-size: 11px; font-weight: 400; color: var(--noir70); }
+  .session {
+    margin-left: auto; display: flex; align-items: center; gap: 14px;
+    font-size: 12px; color: var(--noir70); white-space: nowrap;
+  }
+  .session .logout {
+    color: var(--rouge); text-decoration: none; font-weight: 600;
+    border: 1.5px solid var(--gris); border-radius: 4px; padding: 5px 11px;
+    transition: all .15s;
+  }
+  .session .logout:hover { border-color: var(--rouge); background: var(--rouge-clair); }
 
   /* ── LAYOUT ── */
   .layout { display: flex; min-height: calc(100vh - var(--header-h)); }
@@ -393,6 +403,7 @@
 <header>
   <div class="logo-mark"><span>.A</span></div>
   <h1>Import Tps W <small>Assemblage ingénierie · Airtable</small></h1>
+  <div class="session" id="sessionBox" style="display:none"></div>
 </header>
 
 <div class="layout">
@@ -446,13 +457,12 @@
         </div>
 
         <div class="info-box">
-          <strong>Où trouver le .ics ?</strong>
-          <a href="#" onclick="dlIcs(event)">Cliquer ici pour télécharger <code>payfit.ics</code></a>,
-          puis déposer le fichier dans la case de droite.<br>
-          Le calendrier Payfit ne peut pas être lu automatiquement depuis un fichier local
-          (l'API Payfit n'autorise pas les appels hors de son domaine). Sans lui, seuls les contrôles
-          « projet manquant » et « weekend / férié » sont possibles — les jours de congé
-          apparaîtraient à tort comme non remplis.
+          <strong>Calendrier des congés.</strong>
+          En version déployée il se charge tout seul — rien à faire.
+          Sinon, <a href="#" onclick="dlIcs(event)">télécharger <code>payfit.ics</code></a>
+          puis le déposer dans la case de droite.<br>
+          Sans calendrier, seuls les contrôles « projet manquant » et « weekend / férié »
+          sont possibles : les jours de congé apparaîtraient à tort comme non remplis.
         </div>
       </div>
 
@@ -674,14 +684,23 @@
 
       <div class="card">
         <div class="card-title">Calendrier des congés Payfit</div>
-        <div class="settings-row">
+        <div class="settings-row" id="icsUrlRow">
           <label for="icsUrlInput">URL du flux .ics</label>
-          <input type="text" id="icsUrlInput" oninput="saveIcsUrl(this.value)">
+          <input type="text" id="icsUrlInput" oninput="saveIcsUrl(this.value)"
+                 placeholder="https://api.payfit.com/absences/calendar/…">
+          <div class="hint">
+            <strong>Usage local uniquement.</strong> Sert au bouton de téléchargement de l'étape 1,
+            avant dépôt manuel du fichier. Stockée dans votre navigateur, jamais dans le code —
+            cette URL répond sans authentification, quiconque la détient lit les absences de
+            toute l'entreprise.
+          </div>
         </div>
-        <div class="hint">
-          Utilisée uniquement par le bouton de téléchargement de l'étape 1.
-          Le fichier doit être déposé manuellement : l'API Payfit ne renvoie pas d'en-tête
-          <code>Access-Control-Allow-Origin</code>, ce qui empêche toute lecture directe depuis cette page.
+        <div class="info-box">
+          En version déployée, le calendrier est récupéré <strong>automatiquement</strong> au
+          chargement, via un relais côté serveur qui conserve l'URL hors du navigateur.
+          Ce relais est nécessaire : l'API Payfit ne renvoie pas d'en-tête
+          <code>Access-Control-Allow-Origin</code>, donc aucune page web ne peut l'appeler
+          directement, quel que soit son hébergement.
         </div>
       </div>
 
@@ -728,7 +747,15 @@ const TABLE_AFFAIRE = 'tblOT9d8lAnOS50wK';
 const SHEET = 'Détails';
 const BATCH = 10;
 
+// Aucune URL Payfit en dur : c'est un secret porteur (elle répond sans
+// authentification) et ce dépôt est public. En déployé, elle vit côté serveur
+// dans PAYFIT_ICS_URL et n'est jamais exposée au navigateur. En local, chacun
+// renseigne la sienne dans Paramètres, stockée dans son propre localStorage.
 const ICS_URL_DEFAULT = '';
+
+// Servi par le proxy → téléchargement automatique possible.
+// Ouvert en file:// → dépôt manuel du .ics.
+const MODE_DEPLOYE = location.protocol === 'http:' || location.protocol === 'https:';
 
 const F = {
   id_collab:    'fldhbucYXDPn7Zlpr',
@@ -921,11 +948,74 @@ window.addEventListener('DOMContentLoaded', () => {
   const t = getToken();
   if (t) document.getElementById('tokenInput').value = t;
   document.getElementById('icsUrlInput').value = getIcsUrl();
+
+  if (MODE_DEPLOYE) {
+    // Le champ URL ne sert qu'au mode local : en déployé, l'URL vit côté serveur.
+    const bloc = document.getElementById('icsUrlRow');
+    if (bloc) bloc.style.display = 'none';
+    chargerCalendrierAuto();
+    afficherSession();
+  }
 });
+
+// Affiche l'utilisateur connecté et propose la déconnexion.
+async function afficherSession() {
+  try {
+    const d = await (await fetch('/api/me', { credentials: 'same-origin' })).json();
+    if (!d.connecte) return;
+    const el = document.getElementById('sessionBox');
+    if (!el) return;
+    el.style.display = 'flex';
+    el.innerHTML = `<span title="${esc(d.email)}">👤 ${esc(d.nom || d.email)}</span>`
+      + `<a href="/api/auth/logout" class="logout">Déconnexion</a>`;
+  } catch {}
+}
 
 function dlIcs(ev) {
   ev.preventDefault();
-  window.open(getIcsUrl(), '_blank');
+  // En déployé, on passe par le proxy : l'URL Payfit reste côté serveur.
+  if (MODE_DEPLOYE) { window.open('/api/calendar', '_blank'); return; }
+  const u = getIcsUrl();
+  if (!u) {
+    flash('Renseignez d\'abord l\'URL du calendrier dans Paramètres');
+    showStep('settings'); return;
+  }
+  window.open(u, '_blank');
+}
+
+// ── Récupération automatique du calendrier (mode déployé) ───────────────────
+// L'API Payfit ne renvoie pas d'en-tête Access-Control-Allow-Origin : un fetch
+// direct depuis le navigateur est bloqué quelle que soit l'origine. On passe
+// donc par /api/calendar, qui fait l'appel serveur à serveur.
+async function chargerCalendrierAuto() {
+  if (!MODE_DEPLOYE) return false;
+  const z = document.getElementById('dropIcs');
+  const s = document.getElementById('icsState');
+  s.style.display = 'block';
+  s.style.color = '';
+  s.textContent = '⏳ Récupération du calendrier…';
+  try {
+    const r = await fetch('/api/calendar', { credentials: 'same-origin' });
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      throw new Error(d.erreur || `HTTP ${r.status}`);
+    }
+    icsText = await r.text();
+    const parsed = parseICS(icsText);
+    absenceIndex = parsed.absences;
+    icsMeta = parsed.meta;
+    z.classList.add('loaded');
+    s.textContent = `✓ ${icsMeta.events} absences · ${icsMeta.people} personnes · `
+      + `${icsMeta.min || '?'} → ${icsMeta.max || '?'} (chargé automatiquement)`;
+    return true;
+  } catch (e) {
+    // Repli explicite : l'utilisateur garde le dépôt manuel.
+    absenceIndex = null; icsMeta = null; icsText = null;
+    z.classList.remove('loaded');
+    s.style.color = 'var(--orange)';
+    s.textContent = '⚠ Récupération auto impossible (' + e.message + ') — déposez le fichier';
+    return false;
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
