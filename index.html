@@ -1737,7 +1737,7 @@ function renderChips() {
   const poles = [...new Set(bilan.people.flatMap(p => Object.keys(p.aff).map(poleDe)))]
     .sort((a, b) => a.localeCompare(b, 'fr'));
   document.getElementById('chipsPoles').innerHTML = poles.map(k =>
-    `<span class="chip ${filterPoles.has(k) ? 'on' : ''}" onclick="toggleFilter('q',${JSON.stringify(k)})">${esc(k)}</span>`
+    `<span class="chip ${filterPoles.has(k) ? 'on' : ''}" onclick="toggleFilter('q',${JSON.stringify(k).replace(/"/g,'&quot;')})">${esc(k)}</span>`
   ).join('')
   + (filterPeople.size || filterPoles.size
       ? `<span class="chip" style="border-style:dashed" onclick="resetFilters()">✕ tout afficher</span>` : '');
