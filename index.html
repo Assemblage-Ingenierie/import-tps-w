@@ -670,15 +670,22 @@
 
       <div class="card">
         <div class="card-title">Token Airtable</div>
-        <div class="settings-row">
+        <div class="settings-row" id="tokenRow">
           <label for="tokenInput">Personal Access Token</label>
           <input type="password" id="tokenInput" placeholder="patXXXXXXXXXXXXXX" oninput="saveToken(this.value)">
+          <div class="hint">
+            <strong>Usage local uniquement.</strong> Créer un token sur
+            <a href="https://airtable.com/account" target="_blank">airtable.com/account</a>
+            → Personal access tokens → Create token.<br>
+            Scopes requis : <code>data.records:read</code> + <code>data.records:write</code> sur la base Assemblage.<br>
+            Stocké uniquement dans votre navigateur, jamais dans le code.
+          </div>
         </div>
-        <div class="hint">
-          Créer un token sur <a href="https://airtable.com/account" target="_blank">airtable.com/account</a>
-          → Personal access tokens → Create token.<br>
-          Scopes requis : <code>data.records:read</code> + <code>data.records:write</code> sur la base Assemblage.<br>
-          Le token est stocké <strong>uniquement dans votre navigateur</strong> (localStorage), jamais envoyé ailleurs.
+        <div class="info-box" id="tokenInfoDeploye" style="display:none">
+          En version déployée, le token Airtable est géré <strong>côté serveur</strong>
+          (variable d'environnement <code>AIRTABLE_TOKEN</code>) et partagé par tous les
+          utilisateurs autorisés — rien à saisir ici. Les appels passent par un relais
+          qui ajoute le token sans jamais l'exposer au navigateur.
         </div>
       </div>
 
@@ -941,6 +948,31 @@ function joursOuvres(ym) {
 // ═══════════════════════════════════════════════════════════════════════════
 function saveToken(v) { if (v) localStorage.setItem('ai_airtable_token', v); }
 function getToken()   { return localStorage.getItem('ai_airtable_token') || ''; }
+
+// En déployé, le token vit côté serveur (AIRTABLE_TOKEN) et les appels passent
+// par /api/airtable/... ; en local, chacun colle son PAT dans Paramètres et on
+// appelle Airtable directement. hasAirtableAccess() unifie le test de gating
+// utilisé avant de charger les référentiels ou de lancer l'import.
+function hasAirtableAccess() { return MODE_DEPLOYE || !!getToken(); }
+
+function airtableUrl(tableId, params) {
+  if (!MODE_DEPLOYE) {
+    const q = params ? '?' + params.toString() : '';
+    return `https://api.airtable.com/v0/${BASE_ID}/${tableId}${q}`;
+  }
+  // Chemin Airtable en paramètre de requête plutôt qu'en segment dynamique :
+  // évite de dépendre d'une convention de fichier (ex. [...path].js) dont le
+  // comportement n'est pas garanti hors framework.
+  const p = params ? new URLSearchParams(params) : new URLSearchParams();
+  p.set('path', `${BASE_ID}/${tableId}`);
+  return `/api/airtable?${p.toString()}`;
+}
+function airtableHeaders(extra) {
+  // Le relais ajoute lui-même l'Authorization à partir d'AIRTABLE_TOKEN :
+  // le navigateur ne doit jamais porter ce secret en mode déployé.
+  const h = MODE_DEPLOYE ? {} : { 'Authorization': 'Bearer ' + getToken() };
+  return Object.assign(h, extra || {});
+}
 function saveIcsUrl(v) { localStorage.setItem('ai_ics_url', v || ''); }
 function getIcsUrl()   { return localStorage.getItem('ai_ics_url') || ICS_URL_DEFAULT; }
 
@@ -953,6 +985,11 @@ window.addEventListener('DOMContentLoaded', () => {
     // Le champ URL ne sert qu'au mode local : en déployé, l'URL vit côté serveur.
     const bloc = document.getElementById('icsUrlRow');
     if (bloc) bloc.style.display = 'none';
+    // Même logique pour le token Airtable : géré côté serveur via AIRTABLE_TOKEN.
+    const tokenBloc = document.getElementById('tokenRow');
+    if (tokenBloc) tokenBloc.style.display = 'none';
+    const tokenInfo = document.getElementById('tokenInfoDeploye');
+    if (tokenInfo) tokenInfo.style.display = 'block';
     chargerCalendrierAuto();
     afficherSession();
   }
@@ -1192,7 +1229,6 @@ async function runAnalyse() {
   indexesLoaded = false; ignoredPeople = new Set();
 
   const btn = document.getElementById('btnAnalyse');
-  const token = getToken();
 
   // ── 1. Lecture Excel
   let rows;
@@ -1255,9 +1291,9 @@ async function runAnalyse() {
 
   // ── 4. Chargement des référentiels Airtable
   let linkError = null;
-  if (token) {
+  if (hasAirtableAccess()) {
     btn.textContent = '⏳ Chargement des référentiels…'; btn.disabled = true;
-    try { await loadIndexes(token); }
+    try { await loadIndexes(); }
     catch (e) { linkError = e.message; }
     finally { btn.textContent = '🔍 Analyser'; btn.disabled = false; }
   }
@@ -2291,9 +2327,9 @@ function exportBilanXlsx() {
 // ═══════════════════════════════════════════════════════════════════════════
 //  AIRTABLE — index de liaison
 // ═══════════════════════════════════════════════════════════════════════════
-async function loadIndexes(token) {
+async function loadIndexes() {
   collabIndex = {}; affaireIndex = {}; affaireMeta = {}; collabMeta = {};
-  const headers = { 'Authorization': 'Bearer ' + token };
+  const headers = airtableHeaders();
 
   // Récupère toutes les pages d'une table pour la liste de champs demandée
   async function fetchAll(tableId, fieldIds, label) {
@@ -2303,7 +2339,7 @@ async function loadIndexes(token) {
       const p = new URLSearchParams({ pageSize: 100, returnFieldsByFieldId: 'true' });
       fieldIds.forEach(f => p.append('fields[]', f));
       if (offset) p.set('offset', offset);
-      const r = await fetch(`https://api.airtable.com/v0/${BASE_ID}/${tableId}?${p}`, { headers });
+      const r = await fetch(airtableUrl(tableId, p), { headers, credentials: 'same-origin' });
       const d = await r.json();
       if (!r.ok) throw new Error(`${label}: ${d.error?.message || 'HTTP ' + r.status}`);
       out.push(...d.records);
@@ -2441,8 +2477,7 @@ function addLog(msg, type = 'info') {
 }
 
 async function runImport() {
-  const token = getToken();
-  if (!token) {
+  if (!hasAirtableAccess()) {
     alert('⚠️ Token Airtable manquant.\nAllez dans Paramètres pour le configurer.');
     showStep('settings'); return;
   }
@@ -2459,7 +2494,7 @@ async function runImport() {
   if (!indexesLoaded) {
     addLog('Chargement des référentiels…', 'info');
     try {
-      await loadIndexes(token);
+      await loadIndexes();
       addLog(`Index chargés — ${Object.keys(collabIndex).length} collabs, ${Object.keys(affaireIndex).length} affaires`, 'ok');
       // Résolution tardive des liens si l'analyse s'est faite sans token
       parsedRecords.forEach(r => {
@@ -2479,9 +2514,10 @@ async function runImport() {
   for (let i = 0; i < batches.length; i++) {
     const batch = batches[i].map(r => ({ fields: r.fields }));
     try {
-      const resp = await fetch(`https://api.airtable.com/v0/${BASE_ID}/${TABLE_TPS_W}`, {
+      const resp = await fetch(airtableUrl(TABLE_TPS_W), {
         method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        headers: airtableHeaders({ 'Content-Type': 'application/json' }),
+        credentials: 'same-origin',
         body: JSON.stringify({ records: batch, typecast: true })
       });
       const data = await resp.json();

@@ -33,7 +33,9 @@ Affaire, envoi par lots de 10.
 protégé par connexion Google.
 
 **Local** — ouvrir `index.html` dans un navigateur. Tout fonctionne sauf la
-récupération automatique du calendrier : il faut déposer le `.ics` à la main.
+récupération automatique du calendrier et le token Airtable partagé : il faut
+déposer le `.ics` à la main et coller son propre Personal Access Token dans
+Paramètres.
 
 > L'API Payfit ne renvoie aucun en-tête `Access-Control-Allow-Origin`. Aucune page
 > web ne peut donc l'appeler directement, quel que soit son hébergement. C'est la
@@ -41,7 +43,7 @@ récupération automatique du calendrier : il faut déposer le `.ics` à la main
 
 ## Déploiement
 
-Hébergement sur Vercel. Cinq variables d'environnement à déclarer
+Hébergement sur Vercel. Six variables d'environnement à déclarer
 (voir [`.env.example`](.env.example)) :
 
 | Variable | Rôle |
@@ -51,6 +53,12 @@ Hébergement sur Vercel. Cinq variables d'environnement à déclarer
 | `ALLOWED_EMAILS` | adresses autorisées, séparées par des virgules |
 | `ALLOWED_HD` | domaine Workspace exigé, ex. `assemblage.net` |
 | `SESSION_SECRET` | signature du cookie de session |
+| `AIRTABLE_TOKEN` | PAT Airtable partagé — **secret**, lecture/écriture de toute la base |
+
+`AIRTABLE_TOKEN` passe par le relais `/api/airtable`, protégé par la même
+session que le reste de l'app : un seul token pour tous les utilisateurs
+autorisés, au lieu d'un PAT personnel à générer par personne. En local, chacun
+continue de coller le sien dans Paramètres, comme avant.
 
 Côté Google Cloud : créer un ID client OAuth de type **Application Web** et
 déclarer l'origine du déploiement dans les origines JavaScript autorisées.
