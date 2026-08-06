@@ -526,7 +526,7 @@
           <div><span class="badge find-tag tag-B">B</span> <strong>Weekend / jour férié</strong> — possible, mais à confirmer.</div>
           <div><span class="badge find-tag tag-C">C</span> <strong>Saisie incomplète</strong> — demi-journée ou journée non renseignée, sans absence correspondante dans Payfit.</div>
           <div><span class="badge find-tag tag-D">D</span> <strong>Travail pendant une absence</strong> — temps saisi sur un créneau déclaré absent dans Payfit.</div>
-          <div><span class="badge find-tag tag-E">E</span> <strong>Affaire clôturée</strong> — temps saisi sur une affaire terminée, annulée ou interrompue.</div>
+          <div><span class="badge find-tag tag-E">E</span> <strong>Affaire clôturée</strong> — temps saisi sur une affaire terminée, annulée, interrompue ou livrée.</div>
         </div>
       </div>
     </div>
@@ -823,7 +823,7 @@ const COL_NONE = '#E30513';
 const CODES_HORS_BILAN = new Set(['CONGE PE']);
 
 // États d'affaire sur lesquels du temps saisi est presque toujours une erreur
-const ETATS_ALERTE = new Set(['Terminé', 'Annulé', 'Interrompu']);
+const ETATS_ALERTE = new Set(['Terminé', 'Annulé', 'Interrompu', 'Livré']);
 
 function classifyCode(code) {
   const c = String(code || '').trim();
@@ -1421,7 +1421,8 @@ function runRules() {
     });
   });
 
-  // ── Règle E : temps saisi sur une affaire terminée, annulée ou interrompue
+  // ── Règle E : temps saisi sur une affaire terminée, annulée, interrompue ou
+  //    livrée — une fois livrée, l'affaire ne devrait plus recevoir de temps.
   //    (nécessite Airtable pour connaître l'état interne de l'affaire)
   //    Regroupé par salarié et par affaire : une affaire clôturée sur laquelle
   //    quelqu'un pointe tout le mois ne doit produire qu'une ligne, pas trente.
