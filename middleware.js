@@ -1,9 +1,14 @@
 // Garde d'accès à l'échelle du déploiement.
 //
+// Ce n'est PAS un projet Next.js : pas de dépendance "next" dans package.json.
+// Vercel propose aussi une Edge Middleware autonome ("Routing Middleware") pour
+// les projets sans framework — elle utilise les API Web standard (Request /
+// Response) plutôt que next/server, dont NextResponse ne fonctionnerait pas ici.
+//
 // Le choix retenu est « toute l'application réservée à une liste d'adresses ».
 // La page elle-même est donc protégée, pas seulement les endpoints de données :
 // sans session valide, tout est redirigé vers /login.
-import { NextResponse } from 'next/server';
+import { next } from '@vercel/functions';
 import { jwtVerify } from 'jose';
 
 const COOKIE = 'tpsw_session';
@@ -16,11 +21,21 @@ export const config = {
   matcher: ['/((?!_next/static|_next/image).*)'],
 };
 
-export default async function middleware(req) {
-  const { pathname } = req.nextUrl;
-  if (LIBRES.has(pathname)) return NextResponse.next();
+function lireCookie(request, nom) {
+  const brut = request.headers.get('cookie') || '';
+  for (const part of brut.split(';')) {
+    const i = part.indexOf('=');
+    if (i > 0 && part.slice(0, i).trim() === nom) return decodeURIComponent(part.slice(i + 1));
+  }
+  return null;
+}
 
-  const brut = req.cookies.get(COOKIE)?.value;
+export default async function middleware(request) {
+  const url = new URL(request.url);
+  const pathname = url.pathname;
+  if (LIBRES.has(pathname)) return next();
+
+  const brut = lireCookie(request, COOKIE);
   let valide = false;
   const secret = process.env.SESSION_SECRET;
 
@@ -38,18 +53,15 @@ export default async function middleware(req) {
     }
   }
 
-  if (valide) return NextResponse.next();
+  if (valide) return next();
 
   // Les appels de données répondent 401 : une redirection HTML casserait le
   // fetch côté client au lieu de lui donner une erreur exploitable.
   if (pathname.startsWith('/api/')) {
-    return new NextResponse(JSON.stringify({ erreur: 'Non authentifié' }), {
+    return new Response(JSON.stringify({ erreur: 'Non authentifié' }), {
       status: 401, headers: { 'Content-Type': 'application/json' },
     });
   }
 
-  const dest = req.nextUrl.clone();
-  dest.pathname = '/login';
-  dest.search = '';
-  return NextResponse.redirect(dest);
+  return Response.redirect(new URL('/login', request.url), 302);
 }

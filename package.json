@@ -9,6 +9,7 @@
     "node": ">=20"
   },
   "dependencies": {
-    "jose": "^5.9.6"
+    "jose": "^5.9.6",
+    "@vercel/functions": "^1.5.1"
   }
 }
