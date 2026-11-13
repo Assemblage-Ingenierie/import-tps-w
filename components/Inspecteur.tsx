@@ -110,7 +110,7 @@ function describe(t: Element): Pick {
 }
 
 function toText(p: Pick): string {
-  const l = [`[Suivi des temps — sélection inspecteur] Page ${p.page}${p.vue ? ` · vue « ${p.vue} »` : ''} · zone « ${p.zone} »`];
+  const l = [`[Carnet — sélection inspecteur] Page ${p.page}${p.vue ? ` · vue « ${p.vue} »` : ''} · zone « ${p.zone} »`];
   p.code.forEach(c => l.push(`  ${c.file}${c.fns.length ? ' : ' + c.fns.join(', ') : ''}`));
   l.push(`  élément HTML : <${p.tag}> ${p.css_path}${p.text ? ' — « ' + p.text + ' »' : ''}`);
   if (p.note) l.push(`  À modifier : ${p.note}`);

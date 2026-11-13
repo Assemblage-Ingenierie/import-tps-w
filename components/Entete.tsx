@@ -80,14 +80,14 @@ export default function Entete({ nom, email, admin, peutBasculer }: { nom: strin
       <div className="barre-mobile">
         <button className="burger" aria-label="Ouvrir le menu" aria-expanded={ouvert} onClick={() => setOuvert(o => !o)}>☰</button>
         <Link href="/saisie" className="logo"><img src="/logo-assemblage-noir.png" alt="Assemblage ingénierie" width={20} height={29} /></Link>
-        <span className="titre">Suivi des temps</span>
+        <span className="titre">Carnet</span>
       </div>
       {ouvert && <div className="lat-voile" onClick={() => setOuvert(false)} />}
 
       <aside className={`lateral ${ouvert ? 'ouvert' : ''}`} aria-label="Navigation">
         <div className="lat-tete">
           <Link href="/saisie" className="logo"><img src="/logo-assemblage-noir.png" alt="Assemblage ingénierie" width={20} height={29} /></Link>
-          <div className="titre">Suivi des temps<small>Assemblage ingénierie</small></div>
+          <div className="titre">Carnet<small>Assemblage ingénierie</small></div>
         </div>
 
         <nav className="lat-nav">
