@@ -472,7 +472,6 @@ export default function Saisie({ prenom }: { prenom?: string }) {
       <div className="saisie-tete">
         <div>
           <h1>{prenom ? `Suivi du temps — ${data ? `${data.collab.prenom} ${data.collab.nom}` : prenom}` : 'Suivi du temps de travail'}</h1>
-          <p className="fuseau">🌐 Fuseau horaire de l&apos;entreprise : Europe/Paris</p>
         </div>
         <div className="total-mois">
           <small>Total</small>
