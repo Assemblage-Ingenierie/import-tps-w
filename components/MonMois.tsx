@@ -18,8 +18,9 @@ const GRIS_AUTRES = '#c5ccd3';
 interface Segment { id: string; label: string; titre: string; jours: number; couleur: string }
 interface Point { type: string; texte: string; date: string; creneau: Creneau }
 
-export default function MonMois({ data, affParId, onAller, titre = 'Mon mois' }: {
+export default function MonMois({ data, affParId, onAller, titre = 'Mon mois', couleur = couleurAffaire }: {
   data: DonneesMois;
+  couleur?: (a: AffaireLite) => string;
   titre?: string;
   affParId: Map<string, AffaireLite>;
   onAller: (date: string, creneau: Creneau) => void;
@@ -33,7 +34,7 @@ export default function MonMois({ data, affParId, onAller, titre = 'Mon mois' }:
   const hors: Segment[] = [];
   for (const [id, jours] of parAffaire) {
     const a = affParId.get(id);
-    const seg = { id, label: a?.code || '?', titre: a ? `${a.code} — ${a.nom}` : 'Affaire inconnue', jours, couleur: couleurAffaire(a) };
+    const seg = { id, label: a?.code || '?', titre: a ? `${a.code} — ${a.nom}` : 'Affaire inconnue', jours, couleur: a ? (a.horsAffaire ? couleurAffaire(a) : couleur(a)) : couleurAffaire(null) };
     (a?.horsAffaire ? hors : affaires).push(seg);
   }
   affaires.sort((x, y) => y.jours - x.jours);

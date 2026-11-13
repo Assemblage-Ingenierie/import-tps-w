@@ -10,7 +10,7 @@ import {
   aujourdhuiParis, moisDecale, frMois, frDateLong, semaineIso, lundiDe, addDays, estOuvre, dow,
 } from '@/lib/dates';
 import SelecteurAffaire from './SelecteurAffaire';
-import { couleurAffaire } from './couleurs';
+import { couleurAffaire, couleursDuMois } from './couleurs';
 import MonMois from './MonMois';
 
 const CRENEAUX: Creneau[] = ['AM', 'PM'];
@@ -98,6 +98,14 @@ export default function Saisie({ prenom }: { prenom?: string }) {
     if (data) for (const a of Object.values(data.affaires)) if (!m.has(a.id)) m.set(a.id, a);
     return m;
   }, [affaires, data]);
+
+  // Une couleur distincte par affaire du mois, partagée par la liste, le calendrier et « Mon mois ».
+  const couleursMois = useMemo(() => {
+    const jours = new Map<string, number>();
+    for (const c of data?.creneaux || []) if (c.affaireId) jours.set(c.affaireId, (jours.get(c.affaireId) || 0) + 0.5);
+    return couleursDuMois(jours, affParId);
+  }, [data, affParId]);
+  const couleur = (a: AffaireLite) => couleursMois.get(a.id) ?? couleurAffaire(a);
 
   const creneaux = useMemo(() => new Map((data?.creneaux || []).map(c => [k(c.date, c.creneau), c])), [data]);
   const jourParDate = useMemo(() => new Map((data?.jours || []).map(j => [j.date, j])), [data]);
@@ -342,7 +350,7 @@ export default function Saisie({ prenom }: { prenom?: string }) {
   const pilule = (id: string | null, cle: string) => {
     const a = id ? affParId.get(id) : null;
     return a
-      ? <span className="pilule" title={`${a.code} — ${a.nom}`}><span className="pastille" style={{ background: couleurAffaire(a) }} />{a.code} <span className="pilule-nom">({a.nom})</span></span>
+      ? <span className="pilule" title={`${a.code} — ${a.nom}`}><span className="pastille" style={{ background: couleur(a) }} />{a.code} <span className="pilule-nom">({a.nom})</span></span>
       : <span className="pilule vide">{manquants.has(cle) ? 'À compléter' : 'Projet'}</span>;
   };
 
@@ -439,7 +447,7 @@ export default function Saisie({ prenom }: { prenom?: string }) {
                 <button key={c} disabled={lock || enCours} data-cle={lock ? undefined : cle}
                   onPointerDown={a && !lock ? e => debutGlisse(e, cle, a.id) : undefined}
                   className={`cal-demi ${abs ? 'absence' : ''} ${selection.has(cle) ? 'sel' : ''} ${manquants.has(cle) ? 'manquant' : ''} ${conflits.has(cle) ? 'conflit' : ''} ${glisse?.cibles.has(cle) ? 'cible-drop' : ''} ${a && !lock ? 'glissable' : ''}`}
-                  style={a && !abs ? { background: couleurAffaire(a), color: '#fff' } : undefined}
+                  style={a && !abs ? { background: couleur(a), color: '#fff' } : undefined}
                   title={`${LIB[c]} — ${abs ? 'Absence (Payfit)' : a ? `${a.code} ${a.nom}` : 'vide'}${s?.confirmClot ? ' — affaire clôturée, saisie maintenue' : ''}`}
                   onClick={e => {
                     if (clicIgnore()) return;
@@ -497,7 +505,7 @@ export default function Saisie({ prenom }: { prenom?: string }) {
       </div>
 
       {data && !chargement && (
-        <MonMois data={data} affParId={affParId}
+        <MonMois data={data} affParId={affParId} couleur={couleur}
           titre={prenom ? `Le mois ${/^[aeiouyhàâéèêëîïôöûü]/i.test(data.collab.prenom) ? 'd’' : 'de '}${data.collab.prenom}` : 'Mon mois'}
           onAller={(date, c) => {
           aller({ vue: 'liste' });

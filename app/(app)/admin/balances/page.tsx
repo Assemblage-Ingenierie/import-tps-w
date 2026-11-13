@@ -50,7 +50,7 @@ export default function PageBalances() {
               {lignes.map(l => (
                 <Fragment key={l.id}>
                   <tr className="cliquable" onClick={() => setOuvert(o => (o === l.id ? null : l.id))}>
-                    <td className="nom">{l.parCollab.length ? (ouvert === l.id ? '▾ ' : '▸ ') : ''}{l.code}</td><td>{l.nom}</td><td>{l.pole}</td><td>{l.etat || '—'}</td>
+                    <td className="nom"><span className="chevron-ligne">{l.parCollab.length ? (ouvert === l.id ? '▾' : '▸') : ''}</span>{l.code}</td><td>{l.nom}</td><td>{l.pole}</td><td>{l.etat || '—'}</td>
                     <td className="num">{eur(l.marchePI)}</td>
                     <td className={`num ${l.rentaGlobale != null && l.rentaGlobale < 0 ? 'negatif' : ''}`}>{eur(l.rentaGlobale)}</td>
                     <td className={`num ${l.rentaExercice != null && l.rentaExercice < 0 ? 'negatif' : ''}`}>{eur(l.rentaExercice)}</td>

@@ -235,14 +235,16 @@ code { background: var(--gris-leger); padding: 1px 5px; border-radius: 3px; font
 .interrupteur input { width: 18px; height: 18px; margin-top: 3px; accent-color: var(--rouge); }
 
 /* ── Téléphone ── */
-@media (max-width: 860px) {
-  .entete { padding: 0 14px; gap: 10px; }
+@media (max-width: 1100px) {
+  .entete { padding: 0 16px; gap: 10px; }
   .burger { display: block; }
-  .menus { display: none; position: absolute; top: 62px; left: 0; right: 0; background: #fff; flex-direction: column; align-items: stretch; padding: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.15); }
+  .menus { display: none; position: absolute; top: 58px; left: 0; right: 0; background: #fff; flex-direction: column; align-items: stretch; padding: 8px; border-bottom: 1px solid var(--gris); box-shadow: 0 12px 24px rgba(17,24,39,.08); }
   .menus.ouvert { display: flex; }
   .menu > button { width: 100%; text-align: left; }
-  .deroulant { position: static; box-shadow: none; padding: 0 0 6px 12px; }
+  .deroulant { position: static; box-shadow: none; border: none; padding: 0 0 6px 12px; }
   .session { margin: 8px 0 0; padding: 10px 12px; border-top: 1px solid var(--gris); justify-content: space-between; }
+}
+@media (max-width: 860px) {
   .page { padding: 16px; }
   .saisie-tete h1 { font-size: 18px; }
   .total-mois strong { font-size: 22px; }
@@ -420,3 +422,8 @@ textarea:focus, .recherche:focus, select:focus { box-shadow: 0 0 0 3px var(--rou
 
 /* Inspecteur */
 .insp-box { background: rgba(79,70,229,.08); }
+
+/* Calendrier : cases avant le 1er du mois sans cadre */
+.cal-case.vide { border: none; background: transparent; }
+/* Balances : chevron de largeur fixe pour aligner les codes */
+.chevron-ligne { display: inline-block; width: 14px; color: var(--noir70); }
