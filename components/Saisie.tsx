@@ -373,7 +373,7 @@ export default function Saisie({ prenom }: { prenom?: string }) {
       <div className={`creneau ${selection.has(cle) ? 'sel' : ''} ${manquants.has(cle) ? 'manquant' : ''} ${glisse?.cibles.has(cle) ? 'cible-drop' : ''}`} key={c} id={`c-${j.date}-${c}`} data-cle={lock ? undefined : cle}>
         {lock ? <span /> : <input type="checkbox" aria-label={`Sélectionner ${LIB[c]} du ${frDateLong(j.date)}`} checked={selection.has(cle)} onChange={() => undefined} onClick={e => cocher(cle, e.shiftKey)} title="Maj + clic pour sélectionner une plage" />}
         <span className="lib">{LIB[c]}</span>
-        <button className={`choix ${s?.affaireId && !lock ? 'glissable' : ''}`} disabled={lock || enCours}
+        <button className={`choix ${s?.affaireId ? 'rempli' : ''} ${s?.affaireId && !lock ? 'glissable' : ''}`} disabled={lock || enCours}
           title={s?.affaireId && !lock ? 'Cliquer pour changer · glisser vers des créneaux vides pour recopier' : undefined}
           onPointerDown={s?.affaireId && !lock ? e => debutGlisse(e, cle, s.affaireId!) : undefined}
           onClick={() => { if (!clicIgnore()) setSelecteur(selection.has(cle) && selection.size > 1 ? [...selection] : [cle]); }}>
@@ -578,7 +578,7 @@ export default function Saisie({ prenom }: { prenom?: string }) {
                             ? <input type="checkbox" aria-label={`Sélectionner ${LIB[c]} du ${frDateLong(date)}`} checked={selPanneau.has(cle)} onChange={() => undefined} onClick={e => cocherPanneau(cle, e.shiftKey)} title="Maj + clic pour sélectionner une plage" />
                             : <span />}
                           <span className="lib">{LIB[c]}</span>
-                          <button className={`choix ${choisi && data.editable ? 'glissable' : ''}`} disabled={!data.editable || enCours}
+                          <button className={`choix ${choisi ? 'rempli' : ''} ${choisi && data.editable ? 'glissable' : ''}`} disabled={!data.editable || enCours}
                             title={choisi ? 'Cliquer pour changer · glisser vers des créneaux vides pour recopier' : undefined}
                             onPointerDown={choisi && data.editable ? e => debutGlisse(e, cle, choisi, 'brouillon') : undefined}
                             onClick={() => { if (!clicIgnore()) ouvrirSelecteurPanneau(selPanneau.has(cle) && selPanneau.size > 1 ? [...selPanneau] : [cle]); }}>

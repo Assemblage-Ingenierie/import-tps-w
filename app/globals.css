@@ -1,23 +1,29 @@
-/* Charte Assemblage ingénierie : rouge #E30513, violet #30323E, Open Sans. */
+/* Design « Épuré clair » (choisi le 13/11/2026) : gris clair, accent indigo,
+   cartes arrondies. Historique : les variables --rouge* portent désormais
+   l'ACCENT (indigo) ; le rouge ne sert plus qu'aux erreurs (--danger*). */
 :root {
-  --rouge: #E30513;
-  --rouge-fonce: #c0040f;
-  --rouge-clair: #F9E1E3;
-  --violet: #30323E;
-  --gris: #DFE4E8;
-  --gris-leger: #F2F2F2;
-  --noir70: #4D4D4D;
-  --vert: #27ae60;
-  --vert-clair: #e8f5e9;
-  --orange: #e67e22;
-  --orange-clair: #fff3e0;
-  --bleu-clair: #e3f2fd;
-  --fond: #F2F2F2;
+  --rouge: #4F46E5;
+  --rouge-fonce: #4338CA;
+  --rouge-clair: #EEF0FF;
+  --violet: #1F2430;
+  --gris: #E3E6EB;
+  --gris-leger: #F3F4F6;
+  --noir70: #6B7280;
+  --vert: #16A34A;
+  --vert-clair: #ECFDF3;
+  --orange: #D97706;
+  --orange-clair: #FEF3C7;
+  --bleu-clair: #EFF6FF;
+  --fond: #F6F7F9;
   --carte: #ffffff;
+  --danger: #DC2626;
+  --danger-clair: #FEF2F2;
+  --danger-bord: #FECACA;
+  --rayon: 12px;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { -webkit-text-size-adjust: 100%; }
-body { font-family: 'Open Sans', system-ui, sans-serif; background: var(--fond); color: var(--violet); font-size: 14px; min-height: 100vh; }
+body { font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif; background: var(--fond); color: var(--violet); font-size: 14px; min-height: 100vh; }
 a { color: var(--rouge); text-decoration: none; }
 a:hover { text-decoration: underline; }
 h1 { font-size: 22px; font-weight: 700; margin-bottom: 14px; }
@@ -321,3 +327,96 @@ code { background: var(--gris-leger); padding: 1px 5px; border-radius: 3px; font
 .mm-attention li.warn::before { color: var(--orange); }
 .mm-attention li.info::before { color: #64a3e0; }
 @media (max-width: 860px) { .mm-tete { gap: 10px; } .mm-legende li:nth-child(n+4):not(:last-child) { display: none; } }
+
+
+/* ════════ Design « Épuré clair » — retouches des composants ════════ */
+body { font-size: 14px; -webkit-font-smoothing: antialiased; }
+h1 { font-size: 22px; font-weight: 600; letter-spacing: -.01em; }
+h2 { font-weight: 600; letter-spacing: -.01em; }
+.lien { font-weight: 500; }
+
+/* Boutons : accent indigo, secondaires discrets */
+.btn { border-radius: 8px; font-weight: 500; transition: background .15s, border-color .15s; }
+.btn-pri { background: var(--rouge); color: #fff; }
+.btn-pri:hover:not(:disabled) { background: var(--rouge-fonce); }
+.btn-sec { background: #fff; border: 1px solid var(--gris); color: var(--violet); }
+.btn-sec:hover:not(:disabled) { background: var(--gris-leger); border-color: #D1D5DB; }
+textarea, .recherche, select { border: 1px solid var(--gris); border-radius: 8px; }
+textarea:focus, .recherche:focus, select:focus { box-shadow: 0 0 0 3px var(--rouge-clair); }
+
+/* En-tête blanc, filet gris, menu discret */
+.entete { border-bottom: 1px solid var(--gris); height: 58px; }
+.logo { border-radius: 8px; width: 32px; height: 32px; }
+.logo span { font-size: 14px; }
+.menu > button { color: var(--noir70); font-weight: 500; }
+.menu > button:hover, .menu.ouvert > button { background: var(--gris-leger); color: var(--violet); }
+.deroulant { border: 1px solid var(--gris); border-radius: 10px; box-shadow: 0 8px 24px rgba(17,24,39,.08); }
+.deroulant a:hover { background: var(--rouge-clair); color: var(--rouge-fonce); }
+.bascule { border: 1px solid var(--gris); border-radius: 999px; }
+.bascule button.on { background: var(--rouge); }
+.deconnexion { border: 1px solid var(--gris); border-radius: 8px; color: var(--noir70); }
+
+/* Onglets : soulignement indigo */
+.onglets .actif { color: var(--rouge); }
+
+/* Cartes : arrondi 12 px, filet gris, sans ombre */
+.semaine, .mon-mois, .tableau-wrap, .carte, .cal-case { border-radius: var(--rayon); box-shadow: none; border: 1px solid var(--gris); }
+.semaine-tete { background: #FAFBFC; border-bottom: 1px solid var(--gris); }
+.jour { border-bottom: 1px solid var(--gris-leger); }
+.jour.non-ouvre { background: #FAFBFC; }
+
+/* Créneaux : rempli = fond teinté, vide = pointillés gris */
+.choix { border: 1px solid var(--gris); border-radius: 8px; }
+.choix.rempli { background: var(--rouge-clair); border-color: transparent; }
+.choix.rempli .pilule { color: #3730A3; }
+.choix:hover:not(:disabled) { border-color: #A5B4FC; }
+.creneau.manquant .choix { border: 1px dashed #C7CBD4; background: #fff; }
+.cal-demi { border-radius: 6px; }
+.cal-demi.manquant { border: 1px dashed #C7CBD4; }
+.creneau.sel { background: var(--rouge-clair); }
+
+/* Statuts : pastilles arrondies */
+.statut { border-radius: 999px; padding: 3px 10px; font-weight: 500; border: none; }
+.statut.brouillon { background: var(--gris-leger); color: var(--noir70); }
+.statut.attente, .statut.a-resoumettre { background: #FEF3C7; color: #92400E; }
+.statut.valide { background: #DCFCE7; color: #166534; }
+.statut.refuse { background: var(--danger-clair); color: #991B1B; }
+
+/* Bandeaux : fond doux, filet complet */
+.bandeau { border: 1px solid var(--gris); border-radius: 10px; }
+.bandeau.err { background: var(--danger-clair); border-color: var(--danger-bord); color: #991B1B; }
+.bandeau.warn { background: #FFFBEB; border-color: #FDE68A; color: #92400E; }
+.bandeau.ok { background: var(--vert-clair); border-color: #BBF7D0; color: #166534; }
+.bandeau.info { background: #F5F7FF; border-color: #E0E7FF; color: #3730A3; }
+.msg.err { background: var(--danger-clair); color: #991B1B; border-left-color: var(--danger); }
+
+/* Le rouge ne signale plus que des erreurs */
+.mention.err, .tableau .negatif { color: var(--danger); }
+.cal-demi.conflit { border: 2px solid var(--danger); }
+.mm-attention li.err::before { color: var(--danger); }
+.completude .barre div { background: var(--rouge); }
+
+/* Barres de sélection : fond ardoise, accent indigo */
+.barre-selection { background: #1F2430; border-radius: 12px; }
+.barre-selection .lien, .manquants-selection .lien { color: #C7D2FE; }
+.barre-selection .btn-pri, .manquants-selection .btn-pri { background: var(--rouge); }
+.manquants-selection { background: #1F2430; }
+
+/* Fenêtres */
+.selecteur, .dialogue { border-radius: 14px; box-shadow: 0 20px 48px rgba(17,24,39,.18); }
+.dialogue { border-top: none; border: 1px solid var(--gris); }
+.option.actif { background: var(--rouge-clair); }
+.option .etat { background: #FEF3C7; color: #92400E; }
+.voile { background: rgba(17,24,39,.35); }
+
+/* Tableaux : en-tête clair */
+.tableau th { background: #FAFBFC; color: var(--noir70); font-weight: 600; border-bottom: 1px solid var(--gris); }
+.tableau td { border-bottom: 1px solid var(--gris-leger); }
+.interne { background: #F5F7FF; color: #3730A3; border: 1px solid #E0E7FF; border-left: 1px solid #E0E7FF; border-radius: 10px; }
+
+/* Connexion */
+.login-box { border-top: none; border: 1px solid var(--gris); border-radius: 16px; box-shadow: 0 8px 32px rgba(17,24,39,.06); }
+.marque { border-radius: 12px; }
+
+/* Inspecteur */
+.insp-box { background: rgba(79,70,229,.08); }
