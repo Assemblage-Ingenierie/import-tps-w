@@ -52,8 +52,8 @@ export default function Entete({ nom, email, admin, peutBasculer }: { nom: strin
   const sections: Section[] = [
     // Liste / Calendrier et En cours / Terminées sont des onglets dans chaque page.
     { titre: '', items: [
-      { href: '/saisie', label: 'Mon temps de travail', icone: 'calendrier' },
       { href: '/affaires', label: 'Mes affaires', icone: 'dossier' },
+      { href: '/saisie', label: 'Mon temps de travail', icone: 'calendrier' },
     ] },
   ];
   if (admin) sections.push({ titre: 'Administration', items: [

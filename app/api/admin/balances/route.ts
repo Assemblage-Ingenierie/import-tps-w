@@ -30,7 +30,7 @@ export async function GET() {
           const c = cout.get(prenom) ?? null;
           return { prenom, jours, cout: c };
         }).sort((x, y) => y.jours - x.jours);
-        return { id: a.id, code: a.code, nom: a.nom, etat: a.etat, pole: a.pole, marchePI: a.marchePI, rentaGlobale: a.rentaGlobale, rentaExercice: a.rentaExercice, parCollab };
+        return { id: a.id, code: a.code, nom: a.nom, etat: a.etat, pole: a.pole, marchePI: a.marchePI, rentaGlobale: a.rentaGlobale, rentaExercice: a.rentaExercice, cdp: a.cdp, parCollab };
       });
     return json({ exercice: ex, libelles: { globale: LIBELLE_RENTA_GLOBALE, exercice: LIBELLE_RENTA_EXERCICE }, lignes });
   });

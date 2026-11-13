@@ -108,5 +108,6 @@ export interface LigneBalance {
   marchePI: number | null;
   rentaGlobale: number | null;
   rentaExercice: number | null;
+  cdp: string[];
   parCollab: { prenom: string; jours: number; cout: number | null }[];
 }
