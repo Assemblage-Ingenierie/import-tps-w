@@ -492,7 +492,7 @@ export default function Saisie({ prenom }: { prenom?: string }) {
         <h2>{frMois(ym).replace(/^./, x => x.toUpperCase())}</h2>
         <span className="espace" />
         {vue === 'liste' && <label className="case"><input type="checkbox" checked={masquerWeekends} onChange={e => basculerWeekends(e.target.checked)} /> Désactiver les week-ends</label>}
-        <button className="lien" onClick={() => setPanneau('commentaires')}>Voir les commentaires</button>
+        <button className="lien" onClick={() => setPanneau('commentaires')}>Ajouter un commentaire sur son mois</button>
         {data && !data.vueAdmin && (data.statut === 'A compléter' || data.statut === 'Refusée') && (
           <button className="btn btn-pri" disabled={enCours || !data.editable || ym > aujourdhuiParis().slice(0, 7)} title={ym > aujourdhuiParis().slice(0, 7) ? 'Un mois futur ne peut être soumis qu\x27une fois commencé' : undefined} onClick={() => workflow('soumettre')}>{data.modifieApresEnvoi || data.statut === 'Refusée' ? 'Soumettre à nouveau' : 'Soumettre le mois'}</button>
         )}
