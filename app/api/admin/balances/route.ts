@@ -1,6 +1,5 @@
 // Balances (Admin) : « Rentabilité globale » et « Rentabilité 25/26 » lues dans
-// Airtable (formules), jours saisis sur l'exercice par collaborateur, et
-// rentabilité globale exprimée en jours de chaque collaborateur (÷ son coût journalier).
+// Airtable (formules), et jours saisis sur l'exercice par collaborateur.
 import { exigerAdmin, gerer, json } from '@/lib/auth';
 import { affaires, fiches } from '@/lib/referentiels';
 import { saisiesExercice } from '@/lib/temps';
@@ -27,10 +26,9 @@ export async function GET() {
     const lignes: LigneBalance[] = toutes
       .filter(a => !a.horsAffaire && (a.marchePI != null || a.rentaGlobale != null || parAff.has(a.id)))
       .map(a => {
-        const balance = a.rentaGlobale;
         const parCollab = [...(parAff.get(a.id) || new Map<string, number>()).entries()].map(([prenom, jours]) => {
           const c = cout.get(prenom) ?? null;
-          return { prenom, jours, cout: c, balanceJours: balance != null && c ? balance / c : null };
+          return { prenom, jours, cout: c };
         }).sort((x, y) => y.jours - x.jours);
         return { id: a.id, code: a.code, nom: a.nom, etat: a.etat, pole: a.pole, marchePI: a.marchePI, rentaGlobale: a.rentaGlobale, rentaExercice: a.rentaExercice, parCollab };
       });

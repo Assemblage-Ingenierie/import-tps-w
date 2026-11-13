@@ -26,7 +26,6 @@ export async function GET(req: Request) {
 
     // Balance : jamais envoyée à un User tant que le paramètre Admin est désactivé.
     const voirBalance = u.role === 'admin' || (await balanceVisibleUsers()).actif;
-    const cout = voirBalance ? ((await fiches()).find(f => f.prenom === p.prenom && f.exercice === ex)?.cout ?? null) : null;
 
     const mes: AffaireMienne[] = [];
     for (const a of toutes) {
@@ -38,7 +37,6 @@ export async function GET(req: Request) {
       if (voirBalance) {
         const b = a.rentaGlobale; // formule Airtable « Rentabilité Globale »
         m.balance = b;
-        m.balanceJours = b != null && cout ? b / cout : null;
       }
       mes.push(m);
     }

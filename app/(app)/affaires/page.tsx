@@ -45,7 +45,7 @@ function MesAffaires() {
           <table className="tableau">
             <thead><tr>
               <th>Code</th><th>Affaire</th><th>Pôle</th><th>État</th><th>Rôle</th><th className="num">Mes jours {d.exercice}</th>
-              {d.balanceVisible && <><th className="num">Rentabilité globale</th><th className="num">En jours</th></>}
+              {d.balanceVisible && <><th className="num">Rentabilité globale</th></>}
               <th></th>
             </tr></thead>
             <tbody>
@@ -56,7 +56,6 @@ function MesAffaires() {
                   <td className="num">{nb(a.joursExercice)} j</td>
                   {d.balanceVisible && <>
                     <td className={`num ${a.balance != null && a.balance < 0 ? 'negatif' : ''}`}>{eur(a.balance)}</td>
-                    <td className="num">{a.balanceJours == null ? '—' : `${nb(a.balanceJours)} j`}</td>
                   </>}
                   <td><Link href="/saisie">Saisir</Link></td>
                 </tr>

@@ -22,10 +22,10 @@ export default function PageBalances() {
     .sort((a, b) => (a.rentaGlobale ?? Infinity) - (b.rentaGlobale ?? Infinity)), [d, q]);
 
   const parCollab = useMemo(() => {
-    const m = new Map<string, { prenom: string; jours: number; affaires: { code: string; nom: string; jours: number; balanceJours: number | null }[] }>();
+    const m = new Map<string, { prenom: string; jours: number; affaires: { code: string; nom: string; jours: number }[] }>();
     for (const l of d?.lignes || []) for (const p of l.parCollab) {
       const x = m.get(p.prenom) || { prenom: p.prenom, jours: 0, affaires: [] };
-      x.jours += p.jours; x.affaires.push({ code: l.code, nom: l.nom, jours: p.jours, balanceJours: p.balanceJours });
+      x.jours += p.jours; x.affaires.push({ code: l.code, nom: l.nom, jours: p.jours });
       m.set(p.prenom, x);
     }
     return [...m.values()].sort((a, b) => a.prenom.localeCompare(b.prenom, 'fr'));
@@ -34,7 +34,7 @@ export default function PageBalances() {
   return (
     <div>
       <h1>Balances</h1>
-      <div className="interne">🔒 Document interne : « Rentabilité globale » et « Rentabilité 25/26 » sont les formules Airtable, affichées telles quelles. En jours = rentabilité globale ÷ coût journalier du collaborateur.</div>
+      <div className="interne">🔒 Document interne : « Rentabilité globale » et « Rentabilité 25/26 » sont les formules Airtable, affichées telles quelles.</div>
       <div className="onglets">
         <button className={mode === 'affaire' ? 'actif' : ''} onClick={() => setMode('affaire')}>Par affaire</button>
         <button className={mode === 'collab' ? 'actif' : ''} onClick={() => setMode('collab')}>Par collaborateur</button>
@@ -59,7 +59,7 @@ export default function PageBalances() {
                   {ouvert === l.id && l.parCollab.map(p => (
                     <tr key={l.id + p.prenom} className="sous-ligne">
                       <td></td><td colSpan={3}>{p.prenom}{p.cout != null && <span className="discret"> · {eur(p.cout)}/j</span>}</td><td></td>
-                      <td className="num">{p.balanceJours == null ? '—' : `${nb(p.balanceJours)} j de ${p.prenom}`}</td>
+                      <td></td>
                       <td></td>
                       <td className="num">{nb(p.jours)} j</td>
                     </tr>
@@ -73,13 +73,12 @@ export default function PageBalances() {
       {d && mode === 'collab' && (
         <div className="tableau-wrap">
           <table className="tableau">
-            <thead><tr><th>Collaborateur</th><th>Affaire</th><th className="num">Jours {d.exercice}</th><th className="num">Rentabilité globale en jours du collaborateur</th></tr></thead>
+            <thead><tr><th>Collaborateur</th><th>Affaire</th><th className="num">Jours {d.exercice}</th></tr></thead>
             <tbody>
               {parCollab.map(c => c.affaires.sort((a, b) => b.jours - a.jours).map((a, i) => (
                 <tr key={c.prenom + a.code}>
                   <td className="nom">{i === 0 ? `${c.prenom} (${nb(c.jours)} j)` : ''}</td>
                   <td>{a.code} — {a.nom}</td><td className="num">{nb(a.jours)} j</td>
-                  <td className={`num ${a.balanceJours != null && a.balanceJours < 0 ? 'negatif' : ''}`}>{a.balanceJours == null ? '—' : `${nb(a.balanceJours)} j`}</td>
                 </tr>
               )))}
             </tbody>

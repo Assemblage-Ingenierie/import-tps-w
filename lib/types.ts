@@ -73,7 +73,6 @@ export interface AffaireMienne extends AffaireLite {
   role: string;          // « Chef·fe de projet », « Manager »
   joursExercice: number; // mes jours saisis sur l'exercice en cours
   balance?: number | null;       // seulement si autorisé
-  balanceJours?: number | null;  // idem
 }
 
 export interface LigneValidation {
@@ -100,5 +99,5 @@ export interface LigneBalance {
   marchePI: number | null;
   rentaGlobale: number | null;
   rentaExercice: number | null;
-  parCollab: { prenom: string; jours: number; cout: number | null; balanceJours: number | null }[];
+  parCollab: { prenom: string; jours: number; cout: number | null }[];
 }
