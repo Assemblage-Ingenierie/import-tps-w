@@ -27,3 +27,8 @@ node_modules/
 
 # Anciennes versions, conservées dans l'historique git
 import_tps_w V*.html
+.next/
+next-env.d.ts
+*.tsbuildinfo
+
+.vercel

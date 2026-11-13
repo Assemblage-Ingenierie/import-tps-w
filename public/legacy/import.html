@@ -809,10 +809,10 @@ const FIELD_MAP = [
 // (% Non productif = RDF + Gestion + Prospection / jours travaillés), auquel
 // on ajoute IA, absente de cette formule alors que l'activité existe.
 const CAT_NF = {
-  'AXXX': { label: 'Prospection',               color: '#e67e22' },
+  'AXXX': { label: 'Prospection & communication', color: '#e67e22' },
   'RDF':  { label: 'R&D - Formation',           color: '#8e44ad' },
   'IA':   { label: 'Intelligence artificielle', color: '#16a085' },
-  'A000': { label: 'Gestion',                   color: '#7f8c8d' },
+  'A000': { label: 'Gestion & RH',              color: '#7f8c8d' },
 };
 const COL_FACT = '#27ae60';
 const COL_NONE = '#E30513';
@@ -825,11 +825,22 @@ const CODES_HORS_BILAN = new Set(['CONGE PE']);
 // États d'affaire sur lesquels du temps saisi est presque toujours une erreur
 const ETATS_ALERTE = new Set(['Terminé', 'Annulé', 'Interrompu', 'Livré']);
 
+// Nomenclature 2026 (codes actifs depuis novembre 2026) : chaque nouveau code
+// non facturable est rattaché à l'une des quatre catégories historiques.
+// Source : codes_analytiques_assemblage_2026.xlsx.
+const CODES_NF_2026 = {
+  P001: 'AXXX', P002: 'AXXX', 'AXXX_CT': 'AXXX',      // prospection, communication & offres
+  G001: 'A000', G002: 'A000',                          // gestion, RH
+  R001: 'RDF',  R002: 'RDF',                           // formation, autoformation
+  R003: 'IA',   R004: 'IA', R005: 'IA', R006: 'IA',    // IA, applications partagées AIB
+};
+
 function classifyCode(code) {
   const c = String(code || '').trim();
   if (!c) return { type: 'NONE' };
   if (CODES_HORS_BILAN.has(c)) return { type: 'HORS' };
   if (CAT_NF[c]) return { type: 'NF', cat: c };
+  if (CODES_NF_2026[c]) return { type: 'NF', cat: CODES_NF_2026[c] };
   return { type: 'FACT' };
 }
 
@@ -915,7 +926,7 @@ function feriesFR(y) {
   o[`${y}-05-01`] = 'Fête du Travail';
   o[`${y}-05-08`] = 'Victoire 1945';
   o[P(39)]        = 'Ascension';
-  o[P(50)]        = 'Lundi de Pentecôte';
+  // Lundi de Pentecôte : travaillé chez Assemblage (décision du 12/11/2026).
   o[`${y}-07-14`] = 'Fête nationale';
   o[`${y}-08-15`] = 'Assomption';
   o[`${y}-11-01`] = 'Toussaint';

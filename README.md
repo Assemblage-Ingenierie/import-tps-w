@@ -1,104 +1,69 @@
-# Import Tps W — Assemblage ingénierie
+# Suivi des temps — Assemblage ingénierie
 
-Import des temps de travail Payfit vers Airtable, avec contrôles de saisie
-avant import, rapport diffusable aux salariés et bilan mensuel de facturabilité.
+Application Next.js (App Router, TypeScript) hébergée sur Vercel
+(timesheetai.assemblage.net). Elle remplace le module « Suivi du temps de
+travail » de Payfit :
 
-## Ce que fait l'outil
+- **User** (tout compte Google `@assemblage.net`) : saisie des temps par
+  demi-journée, vues Liste et Calendrier, soumission du mois, commentaires,
+  « Mes affaires » (affaires dont on est Chef·fe de projet ou Manager).
+- **Admin** (`ADMIN_EMAILS`) : validation mensuelle, relecture et correction du
+  mois d'un collaborateur, balances, paramètres, et l'**outil historique**
+  (import de l'export Payfit, contrôles, bilan) conservé tel quel sous
+  `/admin/import` (`public/legacy/import.html`).
 
-**1 — Contrôles de saisie.** Cinq règles repèrent ce qui demande une correction :
+Les temps sont écrits dans Airtable (« Temps W », ou « Temps W TEST » hors
+production) en respectant le contrat de données de l'export Payfit. Les
+absences sont lues dans le calendrier Payfit, en lecture seule.
 
-| | Règle | Détecte |
-|---|---|---|
-| A | Projet manquant | temps déclaré sans code projet |
-| B | Weekend / jour férié | temps sur un jour non ouvré (possible, mais à confirmer) |
-| C | Saisie incomplète | jours ouvrés non couverts, hors congés Payfit |
-| D | Travail pendant une absence | temps déclaré sur un créneau en congé |
-| E | Affaire clôturée | temps sur une affaire terminée, annulée ou interrompue |
+Conception détaillée : [`docs/conception-interface-user.md`](docs/conception-interface-user.md).
 
-Le rapport est groupé par salarié et exportable en e-mail HTML, PDF ou Excel,
-pour être transmis tel quel à l'équipe.
+## Commandes
 
-**2 — Bilan mensuel** *(document interne)*. Répartition du temps déclaré entre
-facturable et les quatre catégories non facturables — Prospection, R&D-Formation,
-Intelligence artificielle, Gestion — sous forme de barre 100 % par salarié, avec
-répartition par pôle, résumé des affaires et valorisation au coût de revient.
-Filtrable par salarié et par pôle.
+```bash
+npm install
+npm run dev        # http://localhost:3000
+npm run typecheck
+npm run build
+```
 
-**3 — Import Airtable.** Résolution automatique des liens Collaborateur et
-Affaire, envoi par lots de 10.
+## Variables d'environnement
 
-## Deux modes d'exécution
-
-**Déployé** — le calendrier des congés se charge automatiquement, l'accès est
-protégé par connexion Google.
-
-**Local** — ouvrir `index.html` dans un navigateur. Tout fonctionne sauf la
-récupération automatique du calendrier et le token Airtable partagé : il faut
-déposer le `.ics` à la main et coller son propre Personal Access Token dans
-Paramètres.
-
-> L'API Payfit ne renvoie aucun en-tête `Access-Control-Allow-Origin`. Aucune page
-> web ne peut donc l'appeler directement, quel que soit son hébergement. C'est la
-> raison d'être du relais `/api/calendar`, qui fait l'appel serveur à serveur.
-
-## Déploiement
-
-Hébergement sur Vercel. Six variables d'environnement à déclarer
-(voir [`.env.example`](.env.example)) :
+Voir [`.env.example`](.env.example).
 
 | Variable | Rôle |
 |---|---|
-| `PAYFIT_ICS_URL` | flux d'absences Payfit — **secret porteur** |
 | `GOOGLE_CLIENT_ID` | identifiant OAuth Google (non secret) |
-| `ALLOWED_EMAILS` | adresses autorisées, séparées par des virgules |
-| `ALLOWED_HD` | domaine Workspace exigé, ex. `assemblage.net` |
-| `SESSION_SECRET` | signature du cookie de session |
-| `AIRTABLE_TOKEN` | PAT Airtable partagé — **secret**, lecture/écriture de toute la base |
+| `ALLOWED_HD` | domaine Workspace exigé (défaut `assemblage.net`) |
+| `ADMIN_EMAILS` | administrateurs, séparés par des virgules (repli : `ALLOWED_EMAILS`) |
+| `SESSION_SECRET` | signature du cookie de session — **secret** |
+| `AIRTABLE_TOKEN` | PAT Airtable — **secret** |
+| `PAYFIT_ICS_URL` | calendrier d'absences Payfit — **secret porteur** |
+| `TPSW_ENV` | `production` pour écrire dans « Temps W » ; sinon « Temps W TEST » |
 
-`AIRTABLE_TOKEN` passe par le relais `/api/airtable`, protégé par la même
-session que le reste de l'app : un seul token pour tous les utilisateurs
-autorisés, au lieu d'un PAT personnel à générer par personne. En local, chacun
-continue de coller le sien dans Paramètres, comme avant.
+## Architecture
 
-Côté Google Cloud : créer un ID client OAuth de type **Application Web** et
-déclarer l'origine du déploiement dans les origines JavaScript autorisées.
+```
+proxy.ts              garde d'accès (session, rôle Admin) — Next 16 « proxy »
+lib/config.ts         IDs Airtable (tables, champs), bascule test / production
+lib/session.ts        session JWT, rôles
+lib/airtable.ts       client Airtable (file 5 req/s, lots de 10, cache)
+lib/payfit.ts         lecture et analyse du calendrier d'absences
+lib/referentiels.ts   affaires et fiches collaborateur (cache 10 min)
+lib/temps.ts          lecture / écriture des créneaux dans Temps W
+lib/mois.ts           mois de saisie, statut, commentaires, règles
+lib/dates.ts          dates, jours fériés (lundi de Pentecôte travaillé)
+app/api/*             routes serveur (rôle vérifié dans chaque handler)
+app/(app)/*           pages authentifiées
+components/*          écran de saisie, sélecteur d'affaire, en-tête
+public/legacy/        outil Admin historique (import Payfit, contrôles, bilan)
+```
 
-## Modèle d'accès — ce qui est protégé, ce qui ne l'est pas
+## Règles de sécurité
 
-L'application entière est réservée aux adresses de `ALLOWED_EMAILS`. Sans session
-valide, le middleware redirige les pages vers `/login` et répond `401` aux appels
-de données. Une adresse retirée de la liste perd l'accès à la requête suivante,
-sans attendre l'expiration du cookie.
-
-- **Protégé** : le calendrier Payfit, dont l'URL ne quitte jamais le serveur, et
-  l'accès à l'application, bilan et coûts nominatifs compris.
-- **Non protégé par l'OAuth** : les données Airtable. Elles restent gouvernées par
-  le jeton personnel de chaque utilisateur, stocké dans son propre navigateur.
-  L'application n'a aucun accès à Airtable qui lui soit propre.
-
-Le bilan porte des montants nominatifs. Les exports destinés aux salariés — e-mail,
-PDF et Excel du rapport de contrôles — n'en reprennent aucun : ni euro, ni coût,
-ni taux de facturabilité. Les deux circuits d'export sont volontairement séparés.
-
-## Conventions métier
-
-- **Exercice fiscal** : 1ᵉʳ juillet → 30 juin. Juillet 2026 relève de `26/27`.
-- **Unité** : la demi-journée. Une saisie de 0,75 j est signalée comme suspecte.
-- **Clé collaborateur** : `Prénom - exercice`, ex. `Margot - 26/27`.
-- **Pôle** : lu depuis Airtable, avec repli sur le suffixe du code projet
-  (`A717S` → STR, `A629E` → ENV, `A031D_2` → DEV).
-- **`CONGE PE`** : exclu du bilan, ce n'est pas du temps de travail, mais compté
-  comme journée couverte par la règle C — un jour déclaré en congé n'est pas un
-  jour manquant.
-
-> À noter : le champ `% Non productif` de la table Collaborateur calcule
-> `(RDF + Gestion + Prospection) / jours travaillés` et **omet l'activité IA**.
-> Le bilan de cet outil l'inclut, d'où un écart attendu avec Airtable — 2,8 points
-> sur juillet 2026.
-
-## Dépendances
-
-Côté navigateur, chargées par CDN : [SheetJS](https://sheetjs.com/) pour la
-lecture Excel, Open Sans, et Google Identity Services sur la page de connexion.
-Côté serveur : [`jose`](https://github.com/panva/jose) pour la vérification des
-jetons. Aucune étape de build.
+- Aucun secret côté navigateur : Airtable et Payfit ne sont appelés que par le serveur.
+- Un User n'agit que sur ses propres temps ; le paramètre `prenom` est réservé aux Admins.
+- Coûts et balances ne sont jamais envoyés à un User, sauf balance si l'Admin
+  l'active dans Paramètres.
+- Le relais Airtable générique et le calendrier Payfit brut de l'outil
+  historique sont réservés aux Admins.

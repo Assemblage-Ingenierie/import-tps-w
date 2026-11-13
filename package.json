@@ -1,15 +1,28 @@
 {
   "name": "import-tps-w",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "private": true,
-  "type": "module",
-  "description": "Import des temps de travail Payfit vers Airtable — contrôles de saisie et bilan mensuel de facturabilité",
+  "description": "Suivi des temps Assemblage ingénierie — saisie par les salariés, validation mensuelle, contrôles et bilan (Admin)",
   "license": "UNLICENSED",
   "engines": {
     "node": ">=20"
   },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
     "jose": "^5.9.6",
-    "@vercel/functions": "^1.5.1"
+    "next": "^16.2.6",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "typescript": "^5"
   }
 }
