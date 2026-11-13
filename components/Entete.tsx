@@ -30,7 +30,7 @@ function Icone({ nom }: { nom: NomIcone }) {
   );
 }
 
-export default function Entete({ nom, email, admin, peutBasculer, test }: { nom: string; email: string; admin: boolean; peutBasculer: boolean; test: boolean }) {
+export default function Entete({ nom, email, admin, peutBasculer }: { nom: string; email: string; admin: boolean; peutBasculer: boolean; test?: boolean }) {
   const [ouvert, setOuvert] = useState(false);
   const [bascule, setBascule] = useState(false);
   const chemin = usePathname();
@@ -84,7 +84,6 @@ export default function Entete({ nom, email, admin, peutBasculer, test }: { nom:
         <button className="burger" aria-label="Ouvrir le menu" aria-expanded={ouvert} onClick={() => setOuvert(o => !o)}>☰</button>
         <Link href="/saisie" className="logo"><img src="/logo-assemblage-noir.png" alt="Assemblage ingénierie" width={20} height={29} /></Link>
         <span className="titre">Suivi des temps</span>
-        {test && <span className="badge-env">TEST</span>}
       </div>
       {ouvert && <div className="lat-voile" onClick={() => setOuvert(false)} />}
 
@@ -93,7 +92,6 @@ export default function Entete({ nom, email, admin, peutBasculer, test }: { nom:
           <Link href="/saisie" className="logo"><img src="/logo-assemblage-noir.png" alt="Assemblage ingénierie" width={20} height={29} /></Link>
           <div className="titre">Suivi des temps<small>Assemblage ingénierie</small></div>
         </div>
-        {test && <div className="lat-env" title="Les saisies sont écrites dans la table Temps W TEST"><span className="badge-env">TEST</span> Temps W TEST</div>}
 
         <nav className="lat-nav">
           {sections.map(s => (

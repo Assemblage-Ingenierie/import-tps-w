@@ -5,7 +5,7 @@ import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import type { AffaireMienne } from '@/lib/types';
-import { couleurAffaire } from '@/components/couleurs';
+import { couleurAffaire, couleursDuMois } from '@/components/couleurs';
 
 const nb = (v: number) => String(Math.round(v * 10) / 10).replace('.', ',');
 const eur = (v: number | null | undefined) => (v == null ? '—' : Math.round(v).toLocaleString('fr-FR') + ' €');
@@ -24,6 +24,12 @@ function MesAffaires() {
       setD(j);
     }).catch(e => setErr(e.message));
   }, []);
+
+  // Une couleur distincte par affaire (la plus travaillée en premier), comme dans la saisie.
+  const couleurs = useMemo(() => couleursDuMois(
+    new Map((d?.mes || []).map(a => [a.id, a.joursExercice] as [string, number])),
+    new Map((d?.mes || []).map(a => [a.id, a] as [string, AffaireMienne])),
+  ), [d]);
 
   const liste = useMemo(() => (d?.mes || [])
     .filter(a => (vue === 'terminees' ? a.clos : !a.clos))
@@ -47,7 +53,7 @@ function MesAffaires() {
             <tbody>
               {liste.map(a => (
                 <tr key={a.id}>
-                  <td className="nom"><span className="pastille" style={{ background: couleurAffaire(a) }} /> {a.code}</td>
+                  <td className="nom"><span className="pastille" style={{ background: couleurs.get(a.id) ?? couleurAffaire(a) }} /> {a.code}</td>
                   <td>{a.nom}</td><td>{a.pole || '—'}</td><td>{a.etat || '—'}</td><td>{a.role}</td>
                   <td className="num">{nb(a.joursExercice)} j</td>
                   {d.balanceVisible && <>

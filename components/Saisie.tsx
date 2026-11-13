@@ -515,7 +515,6 @@ export default function Saisie({ prenom }: { prenom?: string }) {
 
       {data && (
         <div className="bandeaux">
-          {data.env === 'test' && <div className="bandeau info">Environnement de test : les saisies sont écrites dans la table « Temps W TEST ».</div>}
           {!data.vueAdmin && data.modifieApresEnvoi && <div className="bandeau warn"><strong>Temps modifié après l&apos;envoi pour validation.</strong> N&apos;oublie pas de soumettre à nouveau ton temps de travail.</div>}
           {!data.vueAdmin && data.statut === 'En attente de validation' && <div className="bandeau info">Mois envoyé pour validation. Tu peux encore le modifier tant qu&apos;il n&apos;est pas validé : il faudra alors le soumettre à nouveau.</div>}
           {data.statut === 'Refusée' && data.motifRefus && <div className="bandeau err"><strong>Mois refusé.</strong> {data.motifRefus} — corrige ta saisie puis soumets de nouveau.</div>}
