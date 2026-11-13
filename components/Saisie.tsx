@@ -473,7 +473,7 @@ export default function Saisie({ prenom }: { prenom?: string }) {
     <div className="saisie">
       <div className="saisie-tete">
         <div>
-          <h1>{prenom ? `Suivi du temps — ${data ? `${data.collab.prenom} ${data.collab.nom}` : prenom}` : 'Suivi du temps de travail'}</h1>
+          <h1>{prenom ? `Temps de travail — ${data ? `${data.collab.prenom} ${data.collab.nom}` : prenom}` : 'Mon temps de travail'}</h1>
         </div>
         <div className="total-mois">
           <small>Total</small>
