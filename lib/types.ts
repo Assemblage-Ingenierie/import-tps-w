@@ -13,6 +13,7 @@ export interface AffaireLite {
   pole: string;
   clos: boolean;
   horsAffaire: boolean; // Pôle « Autre » : codes G / P / R…
+  gerable?: boolean;    // l'utilisateur peut changer l'état (CDP, Manager ou Admin)
 }
 
 export interface Creneau_ {

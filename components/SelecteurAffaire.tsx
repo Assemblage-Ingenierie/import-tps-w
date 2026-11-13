@@ -13,13 +13,14 @@ interface Props {
   nbCreneaux: number;
   onChoisir: (a: AffaireLite | null) => void;
   onFermer: () => void;
+  modeAjout?: boolean; // « Mes affaires » : choisir une affaire à suivre (pas de créneau à vider)
 }
 
 function normal(s: string) {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 }
 
-export default function SelecteurAffaire({ affaires, mesIds, recentes, nbCreneaux, onChoisir, onFermer }: Props) {
+export default function SelecteurAffaire({ affaires, mesIds, recentes, nbCreneaux, onChoisir, onFermer, modeAjout }: Props) {
   const [q, setQ] = useState('');
   const [voirClos, setVoirClos] = useState(false);
   const [actif, setActif] = useState(0);
@@ -78,7 +79,7 @@ export default function SelecteurAffaire({ affaires, mesIds, recentes, nbCreneau
       <div className="selecteur" onMouseDown={e => e.stopPropagation()} onKeyDown={clavier} role="dialog" aria-label="Choisir une affaire">
         <div className="sel-tete">
           <input ref={input} value={q} onChange={e => setQ(e.target.value)} placeholder="Rechercher un code ou un nom d'affaire…" />
-          <span className="sel-nb">{nbCreneaux} créneau{nbCreneaux > 1 ? 'x' : ''}</span>
+          {!modeAjout && <span className="sel-nb">{nbCreneaux} créneau{nbCreneaux > 1 ? 'x' : ''}</span>}
         </div>
         <div className="sel-liste">
           {sections.s.map(s => (
@@ -96,10 +97,10 @@ export default function SelecteurAffaire({ affaires, mesIds, recentes, nbCreneau
           )}
           {!aplat.length && <div className="sel-vide">Aucune affaire ne correspond.</div>}
         </div>
-        <div className="sel-pied">
+        {!modeAjout && <div className="sel-pied">
           <button className="btn btn-sec btn-sm" onClick={() => onChoisir(null)}>Vider {nbCreneaux > 1 ? 'les créneaux' : 'le créneau'}</button>
           <span className="aide">↑↓ pour naviguer · Entrée pour choisir · Échap pour fermer</span>
-        </div>
+        </div>}
       </div>
     </div>
   );

@@ -467,3 +467,10 @@ textarea:focus, .recherche:focus, select:focus { box-shadow: 0 0 0 3px var(--rou
 /* Interrupteur : teinte ardoise neutre (moins de bleu à l'écran) */
 .interrupteur-dj.on { background: #64748B; }
 .interrupteur-dj:focus-visible { outline-color: #64748B; }
+
+/* Mes affaires : ajout, état modifiable, actions */
+.affaires-barre { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 6px 0 14px; }
+.affaires-barre .recherche { margin: 0; flex: 1; min-width: 200px; }
+.etat-select { padding: 4px 8px; font-size: 13px; border-radius: 6px; background: #fff; }
+.affaire-actions { white-space: nowrap; display: flex; gap: 12px; align-items: center; }
+.discret-lien { color: var(--noir70) !important; font-weight: 400 !important; font-size: 12px !important; }

@@ -682,6 +682,25 @@ export default function Saisie({ prenom }: { prenom?: string }) {
               <button className="btn btn-sec" onClick={() => { const cles = confirmation.changements.map(c => k(c.date, c.creneau)); const p = confirmation.depuisPanneau; setConfirmation(null); if (!p) setSelecteur(cles); }}>
                 {confirmation.absences.length && !confirmation.clos.length ? 'Modifier ma saisie' : 'Modifier la saisie'}
               </button>
+              {confirmation.clos.length > 0 && confirmation.clos.every(a => affParId.get(a.id)?.gerable) && (
+                <button className="btn btn-sec" onClick={async () => {
+                  const conf = confirmation;
+                  setConfirmation(null); setEnCours(true); setErreur(null);
+                  try {
+                    for (const a of conf.clos) {
+                      const r = await fetch('/api/affaires', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'etat', affaireId: a.id, etat: 'En Cours' }) });
+                      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).erreur || `Erreur ${r.status}`);
+                    }
+                    const rouvertes = new Set(conf.clos.map(a => a.id));
+                    setAffaires(l => l.map(a => (rouvertes.has(a.id) ? { ...a, clos: false, etat: 'En Cours' } : a)));
+                  } catch (e) { setErreur((e as Error).message); setEnCours(false); return; }
+                  setEnCours(false);
+                  const ch = conf.changements.map(c => ({ ...c, confirmClot: true, confirmNonOuvre: true, confirmAbsence: true }));
+                  envoyer(ch).then(ok => { if (ok) { setInfo(`Affaire rouverte (En Cours) : ${conf.clos.map(a => a.code).join(', ')}.`); conf.suite?.(); } });
+                }}>
+                  Rouvrir l&apos;affaire et saisir
+                </button>
+              )}
               <button className="btn btn-pri" onClick={() => {
                 const ch = confirmation.changements.map(c => ({ ...c, confirmClot: true, confirmNonOuvre: true, confirmAbsence: true }));
                 const suite = confirmation.suite;
