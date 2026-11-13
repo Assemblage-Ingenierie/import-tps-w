@@ -113,12 +113,14 @@ export const AFFAIRE = {
     manager: 'fldUQFydI5XQeEVKy',
     cdp: 'fldOMWQQ5tFauyWm5',
     marchePI: 'fldsHe8THeJc870ab',
-    // Coût consommé retenu pour la balance (décision du 12/11/2026) : « Coût 26/27 ».
-    // À faire évoluer à chaque exercice, ou à remplacer par « Coût global » (fldwnZEJghmgLZodq).
-    coutConsomme: 'fld3ea25bq1vnQBRf',
+    // Rentabilités calculées dans Airtable (formules, en €). L'application les
+    // affiche telles quelles, sans les recalculer.
+    rentaGlobale: 'fldzzOVKS1UYkX2g4',  // « Rentabilité Globale »
+    rentaExercice: 'fldZqnjx4pyjv8LwC', // « Rentabilité 25/26 »
   },
 };
-export const LIBELLE_COUT_CONSOMME = 'Coût 26/27';
+export const LIBELLE_RENTA_GLOBALE = 'Rentabilité globale';
+export const LIBELLE_RENTA_EXERCICE = 'Rentabilité 25/26';
 
 // États d'affaire « clôturée » : saisie possible après confirmation.
 export const ETATS_CLOS = new Set(['Terminé', 'Annulé', 'Interrompu', 'Livré']);

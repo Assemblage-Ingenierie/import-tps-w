@@ -98,7 +98,7 @@ export interface LigneBalance {
   etat: string;
   pole: string;
   marchePI: number | null;
-  coutConsomme: number | null;
-  balance: number | null;
+  rentaGlobale: number | null;
+  rentaExercice: number | null;
   parCollab: { prenom: string; jours: number; cout: number | null; balanceJours: number | null }[];
 }

@@ -11,14 +11,15 @@ export interface Affaire extends AffaireLite {
   manager: string;
   cdp: string[];
   marchePI: number | null;     // ADMIN
-  coutConsomme: number | null; // ADMIN
+  rentaGlobale: number | null;  // ADMIN — formule Airtable
+  rentaExercice: number | null; // ADMIN — formule Airtable
 }
 
 export function affaires(): Promise<Affaire[]> {
   return memo('ref:affaires', 10 * 60 * 1000, async () => {
     const f = AFFAIRE.f;
     const recs = await lister(AFFAIRE.table, {
-      fields: [f.libelle, f.clef, f.nom, f.etat, f.pole, f.manager, f.cdp, f.marchePI, f.coutConsomme],
+      fields: [f.libelle, f.clef, f.nom, f.etat, f.pole, f.manager, f.cdp, f.marchePI, f.rentaGlobale, f.rentaExercice],
     });
     return recs
       .map(r => {
@@ -35,7 +36,8 @@ export function affaires(): Promise<Affaire[]> {
           manager: texte(r.fields[f.manager]),
           cdp: liste(r.fields[f.cdp]),
           marchePI: nombre(r.fields[f.marchePI]),
-          coutConsomme: nombre(r.fields[f.coutConsomme]),
+          rentaGlobale: nombre(r.fields[f.rentaGlobale]),
+          rentaExercice: nombre(r.fields[f.rentaExercice]),
         } satisfies Affaire;
       })
       .filter(a => a.code)

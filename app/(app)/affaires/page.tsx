@@ -45,7 +45,7 @@ function MesAffaires() {
           <table className="tableau">
             <thead><tr>
               <th>Code</th><th>Affaire</th><th>Pôle</th><th>État</th><th>Rôle</th><th className="num">Mes jours {d.exercice}</th>
-              {d.balanceVisible && <><th className="num">Balance</th><th className="num">Balance en jours</th></>}
+              {d.balanceVisible && <><th className="num">Rentabilité globale</th><th className="num">En jours</th></>}
               <th></th>
             </tr></thead>
             <tbody>

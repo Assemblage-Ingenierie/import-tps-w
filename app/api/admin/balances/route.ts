@@ -1,12 +1,12 @@
-// Balances (Admin) : par affaire, Marché PI − coût consommé (champ Airtable
-// « Coût 26/27 », décision du 12/11/2026) ; par collaborateur, jours saisis sur
-// l'exercice et balance exprimée en jours de ce collaborateur (÷ son coût journalier).
+// Balances (Admin) : « Rentabilité globale » et « Rentabilité 25/26 » lues dans
+// Airtable (formules), jours saisis sur l'exercice par collaborateur, et
+// rentabilité globale exprimée en jours de chaque collaborateur (÷ son coût journalier).
 import { exigerAdmin, gerer, json } from '@/lib/auth';
 import { affaires, fiches } from '@/lib/referentiels';
 import { saisiesExercice } from '@/lib/temps';
 import { aujourdhuiParis, exerciceDe } from '@/lib/dates';
 import { memo } from '@/lib/airtable';
-import { LIBELLE_COUT_CONSOMME } from '@/lib/config';
+import { LIBELLE_RENTA_GLOBALE, LIBELLE_RENTA_EXERCICE } from '@/lib/config';
 import type { LigneBalance } from '@/lib/types';
 
 export async function GET() {
@@ -25,15 +25,15 @@ export async function GET() {
       parAff.set(s.affaireId, m);
     }
     const lignes: LigneBalance[] = toutes
-      .filter(a => !a.horsAffaire && (a.marchePI != null || parAff.has(a.id)))
+      .filter(a => !a.horsAffaire && (a.marchePI != null || a.rentaGlobale != null || parAff.has(a.id)))
       .map(a => {
-        const balance = a.marchePI != null ? a.marchePI - (a.coutConsomme || 0) : null;
+        const balance = a.rentaGlobale;
         const parCollab = [...(parAff.get(a.id) || new Map<string, number>()).entries()].map(([prenom, jours]) => {
           const c = cout.get(prenom) ?? null;
           return { prenom, jours, cout: c, balanceJours: balance != null && c ? balance / c : null };
         }).sort((x, y) => y.jours - x.jours);
-        return { id: a.id, code: a.code, nom: a.nom, etat: a.etat, pole: a.pole, marchePI: a.marchePI, coutConsomme: a.coutConsomme, balance, parCollab };
+        return { id: a.id, code: a.code, nom: a.nom, etat: a.etat, pole: a.pole, marchePI: a.marchePI, rentaGlobale: a.rentaGlobale, rentaExercice: a.rentaExercice, parCollab };
       });
-    return json({ exercice: ex, libelleCout: LIBELLE_COUT_CONSOMME, lignes });
+    return json({ exercice: ex, libelles: { globale: LIBELLE_RENTA_GLOBALE, exercice: LIBELLE_RENTA_EXERCICE }, lignes });
   });
 }

@@ -36,7 +36,7 @@ export async function GET(req: Request) {
       if (!roles.length) continue;
       const m: AffaireMienne = { ...versLite(a), role: roles.join(' · '), joursExercice: jours.get(a.id) || 0 };
       if (voirBalance) {
-        const b = a.marchePI != null ? a.marchePI - (a.coutConsomme || 0) : null;
+        const b = a.rentaGlobale; // formule Airtable « Rentabilité Globale »
         m.balance = b;
         m.balanceJours = b != null && cout ? b / cout : null;
       }
