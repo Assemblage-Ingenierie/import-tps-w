@@ -52,6 +52,8 @@ export default function Saisie({ prenom }: { prenom?: string }) {
   const [selecteurPanneau, setSelecteurPanneau] = useState(false);
   // Brouillon du panneau « Créneaux à compléter » : créneau → affaire, enregistré d'un bloc.
   const [brouillon, setBrouillon] = useState<Map<string, string>>(new Map());
+  const [selPanneau, setSelPanneau] = useState<Set<string>>(new Set());
+  const ancrePanneau = useRef<string | null>(null);
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const [masquerWeekends, setMasquerWeekends] = useState(false);
   useEffect(() => { try { setMasquerWeekends(localStorage.getItem('tpsw_masquer_weekends') === '1'); } catch { /* stockage indisponible */ } }, []);
@@ -164,11 +166,27 @@ export default function Saisie({ prenom }: { prenom?: string }) {
     if (selecteurPanneau) {
       setSelecteurPanneau(false);
       setBrouillon(b => { const n = new Map(b); cles.forEach(c => { if (a) n.set(c, a.id); else n.delete(c); }); return n; });
+      setSelPanneau(new Set());
       return;
     }
     preparer(cles, a);
   }
   const ouvrirSelecteurPanneau = (cles: string[]) => { setSelecteurPanneau(true); setSelecteur(cles); };
+  function cocherPanneau(cle: string, plage: boolean) {
+    const ordre = (data?.completude.manquants || []).map(m => k(m.date, m.creneau));
+    const depuis = ancrePanneau.current;
+    if (plage && depuis && depuis !== cle) {
+      const a = ordre.indexOf(depuis), b = ordre.indexOf(cle);
+      if (a >= 0 && b >= 0) {
+        const morceau = ordre.slice(Math.min(a, b), Math.max(a, b) + 1);
+        setSelPanneau(s => { const n = new Set(s); morceau.forEach(x => n.add(x)); return n; });
+        ancrePanneau.current = cle;
+        return;
+      }
+    }
+    setSelPanneau(s => { const n = new Set(s); if (n.has(cle)) n.delete(cle); else n.add(cle); return n; });
+    ancrePanneau.current = cle;
+  }
 
   // Copie de la semaine précédente (jours ouvrés, sans toucher aux créneaux verrouillés).
   async function copierSemainePrecedente(lundi: string) {
@@ -246,7 +264,7 @@ export default function Saisie({ prenom }: { prenom?: string }) {
   // Glisser un créneau rempli : chaque créneau vide survolé est retenu, et
   // l'affaire y est appliquée au relâchement (avec les confirmations
   // habituelles). Sous 6 px de déplacement, c'est un simple clic.
-  function debutGlisse(e: React.PointerEvent, source: string, affaireId: string) {
+  function debutGlisse(e: React.PointerEvent, source: string, affaireId: string, vers: 'saisie' | 'brouillon' = 'saisie') {
     if (e.button !== 0 || !data?.editable || enCours) return;
     const x0 = e.clientX, y0 = e.clientY;
     let actif = false;
@@ -258,9 +276,10 @@ export default function Saisie({ prenom }: { prenom?: string }) {
         document.body.classList.add('glisse-en-cours');
       }
       ev.preventDefault();
-      const el = document.elementFromPoint(ev.clientX, ev.clientY)?.closest('[data-cle]') as HTMLElement | null;
-      const c = el?.dataset.cle;
-      if (c && c !== source && !creneaux.get(c)?.affaireId) cibles.add(c);
+      const el = document.elementFromPoint(ev.clientX, ev.clientY)?.closest(vers === 'brouillon' ? '[data-cle-brouillon]' : '[data-cle]') as HTMLElement | null;
+      const c = vers === 'brouillon' ? el?.dataset.cleBrouillon : el?.dataset.cle;
+      const vide = vers === 'brouillon' ? !brouillon.has(c || '') : !creneaux.get(c || '')?.affaireId;
+      if (c && c !== source && vide) cibles.add(c);
       setGlisse({ affaireId, x: ev.clientX, y: ev.clientY, cibles: new Set(cibles) });
     };
     const fin = () => {
@@ -272,7 +291,9 @@ export default function Saisie({ prenom }: { prenom?: string }) {
       ignorerClicJusqua.current = Date.now() + 300;
       setGlisse(null);
       const a = affParId.get(affaireId);
-      if (a && cibles.size) preparer([...cibles], a);
+      if (!a || !cibles.size) return;
+      if (vers === 'brouillon') setBrouillon(b => { const n = new Map(b); cibles.forEach(c => n.set(c, a.id)); return n; });
+      else preparer([...cibles], a);
     };
     window.addEventListener('pointermove', bouge);
     window.addEventListener('pointerup', fin);
@@ -519,13 +540,21 @@ export default function Saisie({ prenom }: { prenom?: string }) {
         const restants = manq.filter(m => !brouillon.has(k(m.date, m.creneau))).map(m => k(m.date, m.creneau));
         const peutSoumettre = !data.vueAdmin && (data.statut === 'A compléter' || data.statut === 'Refusée');
         return (
-          <Panneau titre="Créneaux à compléter" onFermer={() => { setPanneau(null); setBrouillon(new Map()); }}>
+          <Panneau titre="Créneaux à compléter" onFermer={() => { setPanneau(null); setBrouillon(new Map()); setSelPanneau(new Set()); }}>
             {erreur && <div className="bandeau err">{erreur}</div>}
             {manq.length === 0 ? <p>Le mois est complet.</p> : <>
               <p className="discret">{manq.length} créneau{manq.length > 1 ? 'x' : ''} ouvré{manq.length > 1 ? 's' : ''} sans affaire. Choisis une affaire pour chacun, puis soumets le mois.</p>
               {data.editable && restants.length > 1 && (
                 <button className="btn btn-sec btn-sm" disabled={enCours} onClick={() => ouvrirSelecteurPanneau(restants)}>Tout remplir avec… ({restants.length})</button>
               )}
+              {selPanneau.size > 0 && (
+                <div className="manquants-selection">
+                  <span>{selPanneau.size} sélectionné{selPanneau.size > 1 ? 's' : ''}</span>
+                  <button className="btn btn-pri btn-sm" disabled={enCours} onClick={() => ouvrirSelecteurPanneau([...selPanneau])}>Choisir une affaire</button>
+                  <button className="lien" onClick={() => setSelPanneau(new Set())}>Annuler</button>
+                </div>
+              )}
+              <p className="aide-manquants">Astuce : glisse un créneau rempli vers les créneaux vides, ou coche avec Maj + clic pour sélectionner une plage.</p>
               <div className="manquants">
                 {[...parJour].map(([date, cs]) => (
                   <div className="manquant-jour" key={date}>
@@ -534,10 +563,15 @@ export default function Saisie({ prenom }: { prenom?: string }) {
                       const cle = k(date, c);
                       const choisi = brouillon.get(cle) || null;
                       return (
-                        <div className={`creneau ${choisi ? '' : 'manquant'}`} key={cle}>
-                          <span />
+                        <div className={`creneau ${choisi ? '' : 'manquant'} ${selPanneau.has(cle) ? 'sel' : ''} ${glisse?.cibles.has(cle) ? 'cible-drop' : ''}`} key={cle} data-cle-brouillon={data.editable ? cle : undefined}>
+                          {data.editable
+                            ? <input type="checkbox" aria-label={`Sélectionner ${LIB[c]} du ${frDateLong(date)}`} checked={selPanneau.has(cle)} onChange={() => undefined} onClick={e => cocherPanneau(cle, e.shiftKey)} title="Maj + clic pour sélectionner une plage" />
+                            : <span />}
                           <span className="lib">{LIB[c]}</span>
-                          <button className="choix" disabled={!data.editable || enCours} onClick={() => ouvrirSelecteurPanneau([cle])}>
+                          <button className={`choix ${choisi && data.editable ? 'glissable' : ''}`} disabled={!data.editable || enCours}
+                            title={choisi ? 'Cliquer pour changer · glisser vers des créneaux vides pour recopier' : undefined}
+                            onPointerDown={choisi && data.editable ? e => debutGlisse(e, cle, choisi, 'brouillon') : undefined}
+                            onClick={() => { if (!clicIgnore()) ouvrirSelecteurPanneau(selPanneau.has(cle) && selPanneau.size > 1 ? [...selPanneau] : [cle]); }}>
                             {pilule(choisi, cle)}<span className="chevron">▾</span>
                           </button>
                           {choisi && <button className="vider" title="Retirer" disabled={enCours} onClick={() => setBrouillon(b => { const n = new Map(b); n.delete(cle); return n; })}>×</button>}

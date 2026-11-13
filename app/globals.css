@@ -293,6 +293,10 @@ code { background: var(--gris-leger); padding: 1px 5px; border-radius: 3px; font
 .manquants { display: grid; gap: 12px; }
 .manquant-jour { display: grid; gap: 6px; padding-bottom: 10px; border-bottom: 1px solid var(--gris-leger); }
 .manquant-date { font-weight: 700; font-size: 13px; text-transform: capitalize; }
-.manquant-jour .creneau { grid-template-columns: 0 82px minmax(0, 1fr) 26px; }
+.manquant-jour .creneau { grid-template-columns: 18px 82px minmax(0, 1fr) 26px; }
+.manquants-selection { position: sticky; top: -16px; z-index: 2; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--violet); color: #fff; padding: 8px 12px; border-radius: 6px; font-size: 13px; }
+.manquants-selection .btn-pri { background: var(--rouge); }
+.manquants-selection .lien { color: #ffb3b8; }
+.aide-manquants { font-size: 11.5px; color: var(--noir70); }
 .manquants-actions { position: sticky; bottom: -16px; background: #fff; padding: 12px 0 4px; display: grid; gap: 8px; border-top: 1px solid var(--gris); }
 .manquants-actions .btn { justify-content: center; }
