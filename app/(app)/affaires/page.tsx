@@ -38,7 +38,11 @@ function MesAffaires() {
 
   return (
     <div>
-      <h1>{vue === 'terminees' ? 'Mes affaires terminées' : 'Mes affaires en cours'}</h1>
+      <h1>Mes affaires</h1>
+      <div className="onglets">
+        <Link className={vue === 'en-cours' ? 'actif' : ''} href="/affaires?vue=en-cours" replace>En cours</Link>
+        <Link className={vue === 'terminees' ? 'actif' : ''} href="/affaires?vue=terminees" replace>Terminées</Link>
+      </div>
       <p className="discret">Affaires dont tu es Chef·fe de projet ou Manager dans Airtable. « Terminées » : état Terminé, Annulé, Interrompu ou Livré.</p>
       <input className="recherche" value={q} onChange={e => setQ(e.target.value)} placeholder="Rechercher…" />
       {err && <div className="bandeau err">{err}</div>}

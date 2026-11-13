@@ -449,3 +449,6 @@ textarea:focus, .recherche:focus, select:focus { box-shadow: 0 0 0 3px var(--rou
 /* Créneau d'absence Payfit vide : saisissable, affiché hachuré */
 .choix:has(.pilule-absence) { background: repeating-linear-gradient(135deg, #F3F4F6, #F3F4F6 6px, #ECEEF2 6px, #ECEEF2 12px); border-style: solid; }
 .pilule-absence { color: var(--noir70) !important; font-weight: 500 !important; }
+
+/* Mes affaires : onglets comme sur la page de saisie */
+.onglets + .discret { margin: 12px 0 0; }

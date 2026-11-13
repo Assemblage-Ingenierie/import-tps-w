@@ -50,13 +50,10 @@ export default function Entete({ nom, email, admin, peutBasculer }: { nom: strin
   }
 
   const sections: Section[] = [
-    { titre: 'Mon suivi de temps de travail', items: [
-      { href: '/saisie?vue=liste', label: 'Saisie — liste', icone: 'liste' },
-      { href: '/saisie?vue=calendrier', label: 'Saisie — calendrier', icone: 'calendrier' },
-    ] },
-    { titre: 'Mes affaires', items: [
-      { href: '/affaires?vue=en-cours', label: 'En cours', icone: 'dossier' },
-      { href: '/affaires?vue=terminees', label: 'Terminées', icone: 'archive' },
+    // Liste / Calendrier et En cours / Terminées sont des onglets dans chaque page.
+    { titre: '', items: [
+      { href: '/saisie', label: 'Mon temps de travail', icone: 'calendrier' },
+      { href: '/affaires', label: 'Mes affaires', icone: 'dossier' },
     ] },
   ];
   if (admin) sections.push({ titre: 'Administration', items: [
@@ -96,7 +93,7 @@ export default function Entete({ nom, email, admin, peutBasculer }: { nom: strin
         <nav className="lat-nav">
           {sections.map(s => (
             <div className="lat-section" key={s.titre}>
-              <div className="lat-titre">{s.titre}</div>
+              {s.titre && <div className="lat-titre">{s.titre}</div>}
               {s.items.map(i => {
                 const estActif = actif(i.href);
                 const contenu = <><Icone nom={i.icone} /><span>{i.label}</span></>;
