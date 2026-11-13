@@ -123,7 +123,6 @@ function analyser(ym: string, e: Etat) {
 
 function verrou(u: Utilisateur, ym: string, statut: Statut): string | null {
   if (u.role === 'admin') return null;
-  if (ym > aujourdhuiParis().slice(0, 7)) return 'La saisie sur un mois futur n\'est pas ouverte.';
   if (statut === 'Validée') return 'Mois validé : la saisie est verrouillée.';
   return null;
 }
