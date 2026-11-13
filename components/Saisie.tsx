@@ -11,6 +11,7 @@ import {
 } from '@/lib/dates';
 import SelecteurAffaire from './SelecteurAffaire';
 import { couleurAffaire } from './couleurs';
+import MonMois from './MonMois';
 
 const CRENEAUX: Creneau[] = ['AM', 'PM'];
 const LIB: Record<Creneau, string> = { AM: 'Matinée', PM: 'Après-midi' };
@@ -494,6 +495,13 @@ export default function Saisie({ prenom }: { prenom?: string }) {
           {data.statut !== 'A compléter' && <button className="btn btn-sec" disabled={enCours} onClick={() => workflow('rouvrir')}>Rouvrir</button>}
         </>}
       </div>
+
+      {data && !chargement && (
+        <MonMois data={data} affParId={affParId} onAller={(date, c) => {
+          aller({ vue: 'liste' });
+          setTimeout(() => document.getElementById(`c-${date}-${c}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 60);
+        }} />
+      )}
 
       {data && (
         <div className="bandeaux">

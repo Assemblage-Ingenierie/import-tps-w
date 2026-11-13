@@ -53,6 +53,8 @@ const ZONES: [string, string, Code[]][] = [
   ['.cal-demi', 'Demi-journée (vue calendrier)', [{ file: S, fns: ['vueCalendrier (cal-demi)'] }, { file: CSS, fns: ['.cal-demi'] }]],
   ['.cal-case', 'Case de jour (vue calendrier)', [{ file: S, fns: ['vueCalendrier'] }]],
   ['.calendrier', 'Vue calendrier', [{ file: S, fns: ['vueCalendrier'] }, { file: CSS, fns: ['.calendrier'] }]],
+  ['.mm-attention', 'Mon mois — points d’attention', [{ file: 'components/MonMois.tsx', fns: ['points', 'groupes'] }]],
+  ['.mon-mois', 'Mon mois — répartition et absences', [{ file: 'components/MonMois.tsx', fns: ['MonMois', 'segments'] }, { file: CSS, fns: ['.mon-mois, .mm-barre'] }]],
   ['.completude', 'Barre de complétude du mois', [{ file: S, fns: ['completude (rendu)'] }, { file: 'lib/mois.ts', fns: ['analyser'] }]],
   ['.bandeau', 'Bandeau d’information', [{ file: S, fns: ['bandeaux (rendu)'] }]],
   ['.barre-mois', 'Barre du mois (navigation, actions)', [{ file: S, fns: ['aller', 'workflow'] }]],
