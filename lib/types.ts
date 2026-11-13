@@ -52,12 +52,14 @@ export interface DonneesMois {
   conflits: Conflit[]; // temps saisi sur un créneau d'absence Payfit
   vueAdmin: boolean;
   modifieApresEnvoi: boolean;
+  nonTravailles: string[]; // « AAAA-MM-JJ|AM » désactivées par le collaborateur
 }
 
 export interface Changement {
   date: string;
   creneau: Creneau;
-  affaireId: string | null;
+  affaireId?: string | null; // absent = ne touche pas au temps saisi
+  nonTravaille?: boolean;    // true : demi-journée désactivée ; false : réactivée
   confirmClot?: boolean;
   confirmNonOuvre?: boolean;
   confirmAbsence?: boolean;

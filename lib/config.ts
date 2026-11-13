@@ -147,6 +147,7 @@ export const VALIDATION = {
     commentaires: 'fldeLHo2ecU8nlgYX', // fil JSON des commentaires du mois
     actif: 'fldLFrSAardlVWKZO',        // lignes Paramètre
     description: 'fldHERif4417af1R4',  // lignes Paramètre
+    nonTravailles: 'fldaI5E737eLo5UgJ', // lignes Mois : demi-journées ouvrées désactivées (JSON)
   },
 };
 

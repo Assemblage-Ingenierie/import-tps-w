@@ -27,15 +27,17 @@ export async function GET(req: Request) {
       const occ = new Map<string, Saisie>();
       for (const s of siennes) for (const c of s.creneau ? [s.creneau] : CRENEAUX) if (!occ.has(`${s.date}|${c}`)) occ.set(`${s.date}|${c}`, s);
       const abs = index ? absencesDe(index, f.prenom, nom) : new Set<string>();
+      const st = statuts.get(cleMois(f.prenom, ym));
+      const off = new Set(st?.off || []);
       let attendus = 0, couverts = 0, conflits = 0;
       for (const d of ouvres) for (const c of CRENEAUX) {
-        attendus++;
         const s = occ.get(`${d}|${c}`);
+        if (off.has(`${d}|${c}`) && !s?.affaireId) continue; // demi-journée désactivée
+        attendus++;
         const a = abs.has(`${d}|${c}`);
         if (a || s?.affaireId) couverts++;
         if (a && s?.affaireId) conflits++;
       }
-      const st = statuts.get(cleMois(f.prenom, ym));
       const cs = comms.get(cleMois(f.prenom, ym)) || [];
       const dernier = cs[cs.length - 1];
       return {

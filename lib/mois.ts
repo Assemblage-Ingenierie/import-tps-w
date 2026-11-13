@@ -17,7 +17,12 @@ export function cleMois(prenom: string, ym: string): string {
 }
 
 // ── Statut mensuel ───────────────────────────────────────────────────────
-interface LigneStatut { id: string | null; statut: Statut; motif: string | null; soumisLe: string | null; decisionLe: string | null; fil: CommentaireStocke[] }
+interface LigneStatut { id: string | null; statut: Statut; motif: string | null; soumisLe: string | null; decisionLe: string | null; fil: CommentaireStocke[]; off: string[] }
+
+// Demi-journées ouvrées désactivées (non travaillées) : JSON ["AAAA-MM-JJ|AM", …].
+function lireOff(v: unknown): string[] {
+  try { const x = JSON.parse(texte(v) || '[]'); return Array.isArray(x) ? x.filter(s => typeof s === 'string') : []; } catch { return []; }
+}
 
 // Un commentaire tel que stocké dans le champ « Commentaires » (JSON) de la ligne du mois.
 interface CommentaireStocke { id: string; texte: string; auteur: string; auteurNom: string; creeLe: string }
@@ -28,12 +33,12 @@ function lireFil(v: unknown): CommentaireStocke[] {
 export async function lireStatut(prenom: string, ym: string): Promise<LigneStatut> {
   const f = VALIDATION.f;
   const recs = await lister(VALIDATION.table, {
-    fields: [f.statut, f.motif, f.soumisLe, f.decisionLe, f.commentaires],
+    fields: [f.statut, f.motif, f.soumisLe, f.decisionLe, f.commentaires, f.nonTravailles],
     filterByFormula: `{${NOMS.validationCle}}=${chaine(cleMois(prenom, ym))}`,
     max: 1,
   });
   const r = recs[0];
-  if (!r) return { id: null, statut: 'A compléter', motif: null, soumisLe: null, decisionLe: null, fil: [] };
+  if (!r) return { id: null, statut: 'A compléter', motif: null, soumisLe: null, decisionLe: null, fil: [], off: [] };
   return {
     id: r.id,
     statut: (texte(r.fields[f.statut]) || 'A compléter') as Statut,
@@ -41,13 +46,14 @@ export async function lireStatut(prenom: string, ym: string): Promise<LigneStatu
     soumisLe: texte(r.fields[f.soumisLe]) || null,
     decisionLe: texte(r.fields[f.decisionLe]) || null,
     fil: lireFil(r.fields[f.commentaires]),
+    off: lireOff(r.fields[f.nonTravailles]),
   };
 }
 
 export async function statutsDuMois(ym: string): Promise<Map<string, LigneStatut & { cle: string }>> {
   const f = VALIDATION.f;
   const recs = await lister(VALIDATION.table, {
-    fields: [f.cle, f.statut, f.motif, f.soumisLe, f.decisionLe, f.commentaires],
+    fields: [f.cle, f.statut, f.motif, f.soumisLe, f.decisionLe, f.commentaires, f.nonTravailles],
     filterByFormula: `AND({${NOMS.validationMois}}=${chaine(ym)}, {${NOMS.validationEnv}}=${chaine(LIBELLE_ENV[envCourant()])})`,
   });
   const m = new Map<string, LigneStatut & { cle: string }>();
@@ -60,6 +66,7 @@ export async function statutsDuMois(ym: string): Promise<Map<string, LigneStatut
       soumisLe: texte(r.fields[f.soumisLe]) || null,
       decisionLe: texte(r.fields[f.decisionLe]) || null,
       fil: lireFil(r.fields[f.commentaires]),
+      off: lireOff(r.fields[f.nonTravailles]),
     });
   }
   return m;
@@ -96,7 +103,7 @@ async function charger(p: Personne, ym: string): Promise<Etat> {
   return { saisies, absences: index ? absencesDe(index, p.prenom, p.nom) : null, affaires };
 }
 
-function analyser(ym: string, e: Etat) {
+function analyser(ym: string, e: Etat, off: Set<string> = new Set()) {
   const jours: Jour[] = joursDuMois(ym).map(d => ({
     date: d,
     ferie: ferieNom(d),
@@ -122,6 +129,7 @@ function analyser(ym: string, e: Etat) {
       const abs = j.absence[c];
       if (abs && s?.affaireId && !s.confirmAbsence) conflits.push({ date: j.date, creneau: c, affaireId: s.affaireId });
       if (!estOuvre(j.date)) continue;
+      if (off.has(`${j.date}|${c}`) && !s?.affaireId) continue; // demi-journée désactivée
       attendus++;
       if (abs || (s && s.affaireId)) couverts++;
       else manquants.push({ date: j.date, creneau: c });
@@ -138,7 +146,7 @@ function verrou(u: Utilisateur, ym: string, statut: Statut): string | null {
 
 export async function donneesMois(u: Utilisateur, p: Personne, ym: string): Promise<DonneesMois> {
   const [e, st, fiche] = await Promise.all([charger(p, ym), lireStatut(p.prenom, ym), ficheDe(p.prenom, exerciceDe(ym + '-01'))]);
-  const a = analyser(ym, e);
+  const a = analyser(ym, e, new Set(st.off));
   const refs: Record<string, ReturnType<typeof versLite>> = {};
   for (const c of a.creneaux) {
     const af = c.affaireId ? e.affaires.get(c.affaireId) : null;
@@ -157,6 +165,7 @@ export async function donneesMois(u: Utilisateur, p: Personne, ym: string): Prom
     vueAdmin: u.role === 'admin',
     // Déjà envoyé une fois, modifié depuis : à soumettre à nouveau.
     modifieApresEnvoi: st.statut === 'A compléter' && !!st.soumisLe,
+    nonTravailles: st.off,
   };
 }
 
@@ -167,11 +176,17 @@ export async function enregistrer(u: Utilisateur, p: Personne, ym: string, chang
   if (raison) throw new ErreurHttp(423, raison);
   const e = await charger(p, ym);
   const cibles: Cible[] = [];
+  const off = new Set(st.off);
   for (const ch of changements) {
     if (!ch || !estDateValide(ch.date) || !joursDuMois(ym).includes(ch.date) || !CRENEAUX.includes(ch.creneau)) {
       throw new ErreurHttp(400, 'Créneau invalide');
     }
-    const absent = !!e.absences?.has(`${ch.date}|${ch.creneau}`);
+    const cleC = `${ch.date}|${ch.creneau}`;
+    // Interrupteur : désactivée explicitement, ou réactivée (y compris en y saisissant du temps).
+    if (ch.nonTravaille === true) off.add(cleC);
+    if (ch.nonTravaille === false || ch.affaireId) off.delete(cleC);
+    if (ch.affaireId === undefined) continue; // simple bascule, le temps saisi n'est pas touché
+    const absent = !!e.absences?.has(cleC);
     if (absent && ch.affaireId && !ch.confirmAbsence) {
       throw new ErreurHttp(409, 'Confirmation requise : absence Payfit sur ce créneau', { confirmer: 'absence', date: ch.date, creneau: ch.creneau });
     }
@@ -194,10 +209,12 @@ export async function enregistrer(u: Utilisateur, p: Personne, ym: string, chang
     });
   }
   const cx: Contexte = { personne: p, fiche: await ficheDe(p.prenom, exerciceDe(ym + '-01')), auteur: u.email };
-  await appliquer(cx, e.saisies, cibles);
-  if (u.role !== 'admin' && st.statut === 'En attente de validation') {
-    await ecrireStatut(p, ym, st, { [VALIDATION.f.statut]: 'A compléter' });
-  }
+  if (cibles.length) await appliquer(cx, e.saisies, cibles);
+  const maj: Record<string, unknown> = {};
+  const offTrie = [...off].filter(x => x.slice(0, 7) === ym).sort();
+  if (offTrie.join() !== [...st.off].sort().join()) maj[VALIDATION.f.nonTravailles] = offTrie.length ? JSON.stringify(offTrie) : null;
+  if (u.role !== 'admin' && st.statut === 'En attente de validation') maj[VALIDATION.f.statut] = 'A compléter';
+  if (Object.keys(maj).length) await ecrireStatut(p, ym, st, maj);
   return donneesMois(u, p, ym);
 }
 

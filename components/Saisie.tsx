@@ -64,6 +64,8 @@ export default function Saisie({ prenom }: { prenom?: string }) {
   };
   // Glisser-déposer d'un créneau rempli vers des créneaux vides.
   const [glisse, setGlisse] = useState<{ affaireId: string; x: number; y: number; cibles: Set<string> } | null>(null);
+  // Demi-journées non travaillées par défaut (férié, week-end, absence) que l'utilisateur vient d'activer.
+  const [activees, setActivees] = useState<Set<string>>(new Set());
   const ignorerClicJusqua = useRef(0);
   // Maj + clic : dernier créneau coché, origine de la plage.
   const ancre = useRef<string | null>(null);
@@ -79,7 +81,7 @@ export default function Saisie({ prenom }: { prenom?: string }) {
   };
 
   const charger = useCallback(async () => {
-    setChargement(true); setErreur(null); setSelection(new Set());
+    setChargement(true); setErreur(null); setSelection(new Set()); setActivees(new Set());
     try { setData(await appel<DonneesMois>(`/api/mois?ym=${ym}${qPrenom}`)); }
     catch (e) { setErreur((e as Error).message); setData(null); }
     finally { setChargement(false); }
@@ -114,6 +116,38 @@ export default function Saisie({ prenom }: { prenom?: string }) {
   const manquants = useMemo(() => new Set((data?.completude.manquants || []).map(m => k(m.date, m.creneau))), [data]);
 
   const absCle = (cle: string) => { const [d, c] = cle.split('|') as [string, Creneau]; return !!jourParDate.get(d)?.absence[c]; };
+  // Demi-journée travaillée ? Oui si du temps y est saisi ; sinon selon le choix
+  // enregistré (désactivée) ou fait à l'instant (activée), et par défaut :
+  // jour ouvré sans absence Payfit.
+  const offServeur = useMemo(() => new Set(data?.nonTravailles || []), [data]);
+  const estActif = (d: string, c: Creneau) => {
+    const cle = k(d, c);
+    if (creneaux.get(cle)?.affaireId) return true;
+    if (offServeur.has(cle)) return false;
+    if (activees.has(cle)) return true;
+    return estOuvre(d) && !jourParDate.get(d)?.absence[c];
+  };
+  const motifInactif = (j: Jour, c: Creneau) =>
+    j.absence[c] ? 'Absence (Payfit)' : j.ferie ? `Férié — ${j.ferie}` : j.weekend ? 'Week-end' : 'Non travaillé';
+  async function basculerActif(j: Jour, c: Creneau) {
+    const cle = k(j.date, c);
+    const s = creneaux.get(cle);
+    const parDefaut = estOuvre(j.date) && !j.absence[c];
+    if (estActif(j.date, c)) {
+      if (s?.affaireId) {
+        const a = affParId.get(s.affaireId);
+        if (!confirm(`Retirer le temps saisi sur ce créneau (${a?.code || 'affaire'}) ?`)) return;
+        await envoyer([{ date: j.date, creneau: c, affaireId: null, ...(parDefaut ? { nonTravaille: true } : {}) }]);
+      } else if (parDefaut) {
+        await envoyer([{ date: j.date, creneau: c, nonTravaille: true }]);
+      }
+      setActivees(x => { const n = new Set(x); n.delete(cle); return n; });
+    } else if (offServeur.has(cle)) {
+      await envoyer([{ date: j.date, creneau: c, nonTravaille: false }]);
+    } else {
+      setActivees(x => new Set(x).add(cle));
+    }
+  }
   const verrouille = (d: string, c: Creneau) => {
     if (!data?.editable) return true;
     void d; void c;
@@ -217,7 +251,7 @@ export default function Saisie({ prenom }: { prenom?: string }) {
       const d = addDays(lundi, i);
       if (d.slice(0, 7) !== ym || !estOuvre(d)) continue;
       for (const c of CRENEAUX) {
-        if (verrouille(d, c) || jourParDate.get(d)?.absence[c]) continue;
+        if (verrouille(d, c) || !estActif(d, c)) continue;
         const src = source.get(k(addDays(precedent, i), c));
         if (!src?.affaireId) continue;
         if (creneaux.get(k(d, c))?.affaireId === src.affaireId) continue;
@@ -233,7 +267,7 @@ export default function Saisie({ prenom }: { prenom?: string }) {
     for (let i = 0; i < 5; i++) {
       const d = addDays(lundi, i);
       if (d.slice(0, 7) !== ym || !estOuvre(d)) continue;
-      for (const c of CRENEAUX) if (!verrouille(d, c) && !jourParDate.get(d)?.absence[c] && !creneaux.get(k(d, c))?.affaireId) cles.push(k(d, c));
+      for (const c of CRENEAUX) if (!verrouille(d, c) && estActif(d, c) && !creneaux.get(k(d, c))?.affaireId) cles.push(k(d, c));
     }
     if (!cles.length) { setInfo('Tous les créneaux ouvrés de cette semaine sont déjà remplis.'); return; }
     setSelecteur(cles);
@@ -379,17 +413,22 @@ export default function Saisie({ prenom }: { prenom?: string }) {
     const s = creneaux.get(cle);
     const abs = j.absence[c];
     const lock = verrouille(j.date, c);
+    const actif = estActif(j.date, c);
+    void abs;
     return (
-      <div className={`creneau ${selection.has(cle) ? 'sel' : ''} ${manquants.has(cle) ? 'manquant' : ''} ${glisse?.cibles.has(cle) ? 'cible-drop' : ''}`} key={c} id={`c-${j.date}-${c}`} data-cle={lock ? undefined : cle}>
-        {lock ? <span /> : <input type="checkbox" aria-label={`Sélectionner ${LIB[c]} du ${frDateLong(j.date)}`} checked={selection.has(cle)} onChange={() => undefined} onClick={e => cocher(cle, e.shiftKey)} title="Maj + clic pour sélectionner une plage" />}
+      <div className={`creneau ${actif ? '' : 'inactif'} ${manquants.has(cle) ? 'manquant' : ''} ${glisse?.cibles.has(cle) ? 'cible-drop' : ''}`} key={c} id={`c-${j.date}-${c}`} data-cle={lock || !actif ? undefined : cle}>
+        <button type="button" role="switch" aria-checked={actif} className={`interrupteur-dj ${actif ? 'on' : ''}`} disabled={lock || enCours}
+          aria-label={`${LIB[c]} du ${frDateLong(j.date)} : ${actif ? 'travaillée' : 'non travaillée'}`}
+          title={actif ? 'Demi-journée travaillée — cliquer pour la désactiver' : 'Demi-journée non travaillée — cliquer pour l’activer'}
+          onClick={() => basculerActif(j, c)}><span /></button>
         <span className="lib">{LIB[c]}</span>
-        <button className={`choix ${s?.affaireId ? 'rempli' : ''} ${s?.affaireId && !lock ? 'glissable' : ''}`} disabled={lock || enCours}
+        {!actif ? <span className="motif-inactif">{motifInactif(j, c)}</span> : <button className={`choix ${s?.affaireId ? 'rempli' : ''} ${s?.affaireId && !lock ? 'glissable' : ''}`} disabled={lock || enCours}
           title={s?.affaireId && !lock ? 'Cliquer pour changer · glisser vers des créneaux vides pour recopier' : undefined}
           onPointerDown={s?.affaireId && !lock ? e => debutGlisse(e, cle, s.affaireId!) : undefined}
           onClick={() => { if (!clicIgnore()) setSelecteur(selection.has(cle) && selection.size > 1 ? [...selection] : [cle]); }}>
           {pilule(s?.affaireId || null, cle)}<span className="chevron">▾</span>
-        </button>
-        {!lock && s?.affaireId && <button className="vider" title="Vider le créneau" disabled={enCours} onClick={() => preparer([cle], null)}>×</button>}
+        </button>}
+        {!lock && actif && s?.affaireId && <button className="vider" title="Vider le créneau" disabled={enCours} onClick={() => preparer([cle], null)}>×</button>}
         <div className="mentions">{mentions(j.date, c)}</div>
       </div>
     );

@@ -452,3 +452,15 @@ textarea:focus, .recherche:focus, select:focus { box-shadow: 0 0 0 3px var(--rou
 
 /* Mes affaires : onglets comme sur la page de saisie */
 .onglets + .discret { margin: 12px 0 0; }
+
+/* Interrupteur « demi-journée travaillée » (vue liste) */
+.creneau { grid-template-columns: 38px 82px minmax(0, 320px) 26px; }
+.interrupteur-dj { position: relative; width: 34px; height: 20px; border-radius: 999px; background: #D1D5DB; transition: background .15s; flex-shrink: 0; }
+.interrupteur-dj span { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(17,24,39,.25); transition: transform .15s; }
+.interrupteur-dj.on { background: var(--rouge); }
+.interrupteur-dj.on span { transform: translateX(14px); }
+.interrupteur-dj:focus-visible { outline: 2px solid var(--rouge); outline-offset: 2px; }
+.interrupteur-dj:disabled { cursor: not-allowed; opacity: .5; }
+.creneau.inactif .lib { color: var(--noir70); }
+.motif-inactif { font-size: 13px; color: #9CA3AF; padding: 9px 2px; min-height: 38px; display: flex; align-items: center; }
+@media (max-width: 860px) { .creneau { grid-template-columns: 38px 72px minmax(0, 1fr) 26px; } }
