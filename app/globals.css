@@ -464,3 +464,6 @@ textarea:focus, .recherche:focus, select:focus { box-shadow: 0 0 0 3px var(--rou
 .creneau.inactif .lib { color: var(--noir70); }
 .motif-inactif { font-size: 13px; color: #9CA3AF; padding: 9px 2px; min-height: 38px; display: flex; align-items: center; }
 @media (max-width: 860px) { .creneau { grid-template-columns: 38px 72px minmax(0, 1fr) 26px; } }
+/* Interrupteur : teinte ardoise neutre (moins de bleu à l'écran) */
+.interrupteur-dj.on { background: #64748B; }
+.interrupteur-dj:focus-visible { outline-color: #64748B; }
