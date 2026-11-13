@@ -8,7 +8,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { COOKIE, COOKIE_VUE, lireJeton } from '@/lib/session';
 
-const LIBRES = new Set(['/login', '/api/auth/callback', '/api/auth/logout', '/api/me', '/favicon.ico']);
+const LIBRES = new Set(['/login', '/api/auth/callback', '/api/auth/logout', '/api/me', '/favicon.ico', '/logo-assemblage-noir.png']);
 const ADMIN = [/^\/admin(\/|$)/, /^\/legacy\//, /^\/api\/admin\//, /^\/api\/airtable$/, /^\/api\/calendar$/];
 
 export async function proxy(request: NextRequest) {

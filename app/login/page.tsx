@@ -53,7 +53,7 @@ export default function Login() {
   return (
     <div className="login">
       <div className="login-box">
-        <div className="marque"><span>.A</span></div>
+        <div className="marque"><img src="/logo-assemblage-noir.png" alt="Assemblage ingénierie" width={34} height={49} /></div>
         <h1>Suivi des temps</h1>
         <p className="sous">Assemblage ingénierie<br />Connexion avec votre compte Google @assemblage.net</p>
         <div ref={bouton} className="gbtn" />

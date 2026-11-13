@@ -61,10 +61,11 @@ const ZONES: [string, string, Code[]][] = [
   ['.total-mois', 'Total et statut du mois', [{ file: S, fns: ['total', 'statutClasse'] }]],
   ['.saisie-tete', 'Titre de la page de saisie', [{ file: S, fns: ['Saisie (saisie-tete)'] }]],
   ['.saisie .onglets', 'Onglets Liste / Calendrier', [{ file: S, fns: ['aller({ vue })'] }]],
-  ['.entete .deroulant', 'Menu déroulant', [{ file: 'components/Entete.tsx', fns: ['menus'] }]],
-  ['.entete .menu', 'Menu de l’en-tête', [{ file: 'components/Entete.tsx', fns: ['menus', 'ouvert'] }]],
-  ['.entete .session', 'Utilisateur connecté et déconnexion', [{ file: 'components/Entete.tsx', fns: ['Entete (session)'] }]],
-  ['.entete', 'En-tête', [{ file: 'components/Entete.tsx', fns: ['Entete'] }, { file: CSS, fns: ['.entete'] }]],
+  ['.lat-pied', 'Menu latéral — utilisateur, bascule User / Admin, déconnexion', [{ file: 'components/Entete.tsx', fns: ['Entete (lat-pied)', 'changerVue'] }]],
+  ['.lat-lien', 'Menu latéral — lien de navigation', [{ file: 'components/Entete.tsx', fns: ['sections', 'actif'] }]],
+  ['.lat-tete', 'Menu latéral — logo et titre', [{ file: 'components/Entete.tsx', fns: ['Entete (lat-tete)'] }, { file: 'public/logo-assemblage-noir.png', fns: [] }]],
+  ['.lateral', 'Menu latéral', [{ file: 'components/Entete.tsx', fns: ['Entete'] }, { file: CSS, fns: ['.lateral, .lat-*'] }]],
+  ['.barre-mobile', 'Barre du haut (téléphone)', [{ file: 'components/Entete.tsx', fns: ['Entete (barre-mobile)'] }]],
   ['.login-box', 'Page de connexion', [{ file: 'app/login/page.tsx', fns: ['Login'] }]],
 ];
 

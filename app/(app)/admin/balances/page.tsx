@@ -52,8 +52,8 @@ export default function PageBalances() {
                   <tr className="cliquable" onClick={() => setOuvert(o => (o === l.id ? null : l.id))}>
                     <td className="nom"><span className="chevron-ligne">{l.parCollab.length ? (ouvert === l.id ? '▾' : '▸') : ''}</span>{l.code}</td><td>{l.nom}</td><td>{l.pole}</td><td>{l.etat || '—'}</td>
                     <td className="num">{eur(l.marchePI)}</td>
-                    <td className={`num ${l.rentaGlobale != null && l.rentaGlobale < 0 ? 'negatif' : ''}`}>{eur(l.rentaGlobale)}</td>
-                    <td className={`num ${l.rentaExercice != null && l.rentaExercice < 0 ? 'negatif' : ''}`}>{eur(l.rentaExercice)}</td>
+                    <td className="num">{eur(l.rentaGlobale)}</td>
+                    <td className="num">{eur(l.rentaExercice)}</td>
                     <td className="num">{nb(l.parCollab.reduce((s, p) => s + p.jours, 0))} j</td>
                   </tr>
                   {ouvert === l.id && l.parCollab.map(p => (

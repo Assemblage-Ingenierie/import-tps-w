@@ -1,14 +1,43 @@
 'use client';
-// En-tête avec menus déroulants (bureau : barre ; mobile : menu ☰).
+// Menu latéral (gauche) : sections dépliées, page courante surlignée,
+// utilisateur, bascule User / Admin et déconnexion en pied.
+// Téléphone : barre fine en haut, le menu s'ouvre par-dessus la page.
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
-interface Item { href: string; label: string; brut?: boolean }
-interface Menu { label: string; items: Item[] }
+// Icônes au trait (24×24), dessinées en SVG pour ne dépendre d'aucune bibliothèque.
+const ICONES = {
+  liste: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
+  calendrier: 'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z',
+  dossier: 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
+  archive: 'M3 4h18v4H3zM5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8M10 12h4',
+  valider: 'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11',
+  graphique: 'M3 3v18h18M7 15l4-4 3 3 5-6',
+  reglages: 'M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6',
+  import: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12',
+  sortie: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9',
+};
+type NomIcone = keyof typeof ICONES;
+interface Item { href: string; label: string; icone: NomIcone; brut?: boolean }
+interface Section { titre: string; items: Item[] }
+
+function Icone({ nom }: { nom: NomIcone }) {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={ICONES[nom]} />
+    </svg>
+  );
+}
 
 export default function Entete({ nom, email, admin, peutBasculer, test }: { nom: string; email: string; admin: boolean; peutBasculer: boolean; test: boolean }) {
+  const [ouvert, setOuvert] = useState(false);
   const [bascule, setBascule] = useState(false);
+  const chemin = usePathname();
+  const params = useSearchParams();
+
+  useEffect(() => { setOuvert(false); }, [chemin, params]);
+
   // Bascule de vue (Admin) : le serveur pose le cookie, puis la page est
   // rechargée pour que menus, droits et données suivent la nouvelle vue.
   async function changerVue(vue: 'user' | 'admin') {
@@ -19,65 +48,82 @@ export default function Entete({ nom, email, admin, peutBasculer, test }: { nom:
     const ici = location.pathname + location.search;
     location.assign(vue === 'user' && ici.startsWith('/admin') ? '/saisie' : ici);
   }
-  const [ouvert, setOuvert] = useState<string | null>(null);
-  const [mobile, setMobile] = useState(false);
-  const ref = useRef<HTMLElement>(null);
-  const chemin = usePathname();
 
-  useEffect(() => { setOuvert(null); setMobile(false); }, [chemin]);
-  useEffect(() => {
-    const f = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOuvert(null); };
-    document.addEventListener('click', f);
-    return () => document.removeEventListener('click', f);
-  }, []);
-
-  const menus: Menu[] = [
-    { label: 'Mes affaires', items: [
-      { href: '/affaires?vue=en-cours', label: 'Mes affaires en cours' },
-      { href: '/affaires?vue=terminees', label: 'Mes affaires terminées' },
+  const sections: Section[] = [
+    { titre: 'Mon suivi de temps de travail', items: [
+      { href: '/saisie?vue=liste', label: 'Saisie — liste', icone: 'liste' },
+      { href: '/saisie?vue=calendrier', label: 'Saisie — calendrier', icone: 'calendrier' },
     ] },
-    { label: 'Mon suivi de temps de travail', items: [
-      { href: '/saisie?vue=liste', label: 'Saisie — vue liste' },
-      { href: '/saisie?vue=calendrier', label: 'Saisie — vue calendrier' },
+    { titre: 'Mes affaires', items: [
+      { href: '/affaires?vue=en-cours', label: 'En cours', icone: 'dossier' },
+      { href: '/affaires?vue=terminees', label: 'Terminées', icone: 'archive' },
     ] },
   ];
-  if (admin) menus.push({ label: 'Administration', items: [
-    { href: '/admin/validation', label: 'Validation mensuelle' },
-    { href: '/admin/balances', label: 'Balances' },
-    { href: '/admin/parametres', label: 'Paramètres' },
-    { href: '/admin/import', label: 'Import Payfit, contrôles et bilan (outil historique)', brut: true },
+  if (admin) sections.push({ titre: 'Administration', items: [
+    { href: '/admin/validation', label: 'Validation mensuelle', icone: 'valider' },
+    { href: '/admin/balances', label: 'Balances', icone: 'graphique' },
+    { href: '/admin/parametres', label: 'Paramètres', icone: 'reglages' },
+    { href: '/admin/import', label: 'Import Payfit et bilan', icone: 'import', brut: true },
   ] });
 
+  // Page courante : même chemin, et même « vue » quand le lien en précise une.
+  const actif = (href: string) => {
+    const [p, q] = href.split('?');
+    if (chemin !== p) return p === '/admin/validation' && chemin.startsWith('/admin/collaborateur');
+    if (!q) return true;
+    const [cle, val] = q.split('=');
+    const courant = params.get(cle) || (p === '/saisie' ? 'liste' : p === '/affaires' ? 'en-cours' : '');
+    return courant === val;
+  };
+
+  const initiales = (nom || email).split(/\s+/).map(x => x[0]).slice(0, 2).join('').toUpperCase();
+
   return (
-    <header className="entete" ref={ref}>
-      <Link href="/saisie" className="logo"><span>.A</span></Link>
-      <div className="titre">Suivi des temps<small>Assemblage ingénierie</small></div>
-      {test && <span className="badge-env" title="Les saisies sont écrites dans la table Temps W TEST">TEST</span>}
-      <button className="burger" aria-label="Menu" onClick={e => { e.stopPropagation(); setMobile(m => !m); }}>☰</button>
-      <nav className={`menus ${mobile ? 'ouvert' : ''}`}>
-        {menus.map(m => (
-          <div key={m.label} className={`menu ${ouvert === m.label ? 'ouvert' : ''}`}>
-            <button onClick={e => { e.stopPropagation(); setOuvert(o => (o === m.label ? null : m.label)); }} aria-expanded={ouvert === m.label}>
-              {m.label} <span className="chevron">▾</span>
-            </button>
-            <div className="deroulant">
-              {m.items.map(i => i.brut
-                ? <a key={i.href} href={i.href}>{i.label}</a>
-                : <Link key={i.href} href={i.href}>{i.label}</Link>)}
+    <>
+      <div className="barre-mobile">
+        <button className="burger" aria-label="Ouvrir le menu" aria-expanded={ouvert} onClick={() => setOuvert(o => !o)}>☰</button>
+        <Link href="/saisie" className="logo"><img src="/logo-assemblage-noir.png" alt="Assemblage ingénierie" width={20} height={29} /></Link>
+        <span className="titre">Suivi des temps</span>
+        {test && <span className="badge-env">TEST</span>}
+      </div>
+      {ouvert && <div className="lat-voile" onClick={() => setOuvert(false)} />}
+
+      <aside className={`lateral ${ouvert ? 'ouvert' : ''}`} aria-label="Navigation">
+        <div className="lat-tete">
+          <Link href="/saisie" className="logo"><img src="/logo-assemblage-noir.png" alt="Assemblage ingénierie" width={20} height={29} /></Link>
+          <div className="titre">Suivi des temps<small>Assemblage ingénierie</small></div>
+        </div>
+        {test && <div className="lat-env" title="Les saisies sont écrites dans la table Temps W TEST"><span className="badge-env">TEST</span> Temps W TEST</div>}
+
+        <nav className="lat-nav">
+          {sections.map(s => (
+            <div className="lat-section" key={s.titre}>
+              <div className="lat-titre">{s.titre}</div>
+              {s.items.map(i => {
+                const estActif = actif(i.href);
+                const contenu = <><Icone nom={i.icone} /><span>{i.label}</span></>;
+                return i.brut
+                  ? <a key={i.href} href={i.href} className="lat-lien">{contenu}</a>
+                  : <Link key={i.href} href={i.href} className={`lat-lien ${estActif ? 'actif' : ''}`} aria-current={estActif ? 'page' : undefined}>{contenu}</Link>;
+              })}
             </div>
+          ))}
+        </nav>
+
+        <div className="lat-pied">
+          <div className="lat-user" title={email}>
+            <span className="avatar">{initiales}</span>
+            <span className="lat-nom">{nom}<small>{email}</small></span>
           </div>
-        ))}
-        <div className="session">
-          <span title={email}>{nom}</span>
           {peutBasculer && (
             <span className="bascule" role="group" aria-label="Vue" title="Basculer entre l'interface salarié et l'interface administrateur">
               <button className={!admin ? 'on' : ''} aria-pressed={!admin} disabled={bascule} onClick={() => changerVue('user')}>User</button>
               <button className={admin ? 'on' : ''} aria-pressed={admin} disabled={bascule} onClick={() => changerVue('admin')}>Admin</button>
             </span>
           )}
-          <a href="/api/auth/logout" className="deconnexion">Déconnexion</a>
+          <a href="/api/auth/logout" className="lat-lien lat-sortie"><Icone nom="sortie" /><span>Déconnexion</span></a>
         </div>
-      </nav>
-    </header>
+      </aside>
+    </>
   );
 }

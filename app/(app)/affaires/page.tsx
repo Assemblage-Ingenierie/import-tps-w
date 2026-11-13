@@ -55,7 +55,7 @@ function MesAffaires() {
                   <td>{a.nom}</td><td>{a.pole || '—'}</td><td>{a.etat || '—'}</td><td>{a.role}</td>
                   <td className="num">{nb(a.joursExercice)} j</td>
                   {d.balanceVisible && <>
-                    <td className={`num ${a.balance != null && a.balance < 0 ? 'negatif' : ''}`}>{eur(a.balance)}</td>
+                    <td className="num">{eur(a.balance)}</td>
                   </>}
                   <td><Link href="/saisie">Saisir</Link></td>
                 </tr>
