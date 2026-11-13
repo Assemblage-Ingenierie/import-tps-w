@@ -247,3 +247,25 @@ code { background: var(--gris-leger); padding: 1px 5px; border-radius: 3px; font
   .cal-num .tag { display: none; }
   .completude .barre { width: 90px; }
 }
+
+/* ── Inspecteur (Admin) — repris d'AI Coupé ── */
+.insp-barre { position: fixed; left: 14px; bottom: 14px; z-index: 9998; display: flex; gap: 6px; }
+.insp-btn { background: var(--violet); color: #fff; border: 0; border-radius: 20px; padding: 8px 14px; font-size: 12px; font-weight: 600; box-shadow: 0 4px 14px rgba(0,0,0,.25); display: inline-flex; align-items: center; gap: 6px; }
+.insp-btn.on { background: var(--rouge); }
+.insp-nb { background: var(--rouge); border-radius: 9px; padding: 0 6px; font-size: 11px; }
+.insp-btn.on .insp-nb { background: var(--violet); }
+.insp-box { position: fixed; z-index: 9997; pointer-events: none; border: 2px solid var(--rouge); background: rgba(227,5,19,.08); border-radius: 3px; }
+.insp-tip { position: fixed; z-index: 9999; pointer-events: none; background: var(--violet); color: #fff; font-size: 11px; padding: 4px 8px; border-radius: 4px; max-width: 360px; }
+.insp-panel { position: fixed; left: 14px; bottom: 58px; z-index: 9999; width: min(420px, calc(100vw - 28px)); max-height: 70vh; overflow-y: auto; background: #fff; border-radius: 12px; box-shadow: 0 10px 34px rgba(0,0,0,.25); padding: 14px 16px; font-size: 12.5px; color: var(--violet); }
+.insp-panel h4 { margin: 0 0 6px; font-size: 15px; }
+.insp-panel .k { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; font-weight: 600; color: #6B6D78; margin-top: 8px; }
+.insp-panel code { font-family: Consolas, monospace; font-size: 11.5px; background: var(--gris-leger); padding: 1px 5px; border-radius: 3px; margin-right: 4px; }
+.insp-panel textarea { width: 100%; min-height: 54px; margin-top: 4px; border: 1px solid #DADADA; border-radius: 6px; padding: 6px 8px; font: inherit; }
+.insp-panel .row { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+.insp-panel .row button { border: 1.5px solid var(--violet); background: #fff; border-radius: 6px; padding: 6px 10px; font-weight: 600; font-size: 12px; }
+.insp-panel .row button.p { background: var(--rouge); border-color: var(--rouge); color: #fff; }
+.insp-panel .ok { color: #2E7D46; font-size: 11.5px; margin-top: 6px; }
+.insp-notes { margin: 6px 0 0 18px; display: grid; gap: 8px; }
+.insp-notes small { color: var(--noir70); font-size: 11px; }
+.lien-insp { color: var(--rouge); font-size: 11px; font-weight: 600; }
+@media (max-width: 860px) { .insp-ui { display: none; } }
