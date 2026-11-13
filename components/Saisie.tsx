@@ -18,7 +18,7 @@ const k = (d: string, c: Creneau) => `${d}|${c}`;
 const nb = (v: number) => String(Math.round(v * 10) / 10).replace('.', ',');
 
 type Vue = 'liste' | 'calendrier';
-interface Confirmation { clos: AffaireLite[]; nonOuvres: string[]; changements: Changement[] }
+interface Confirmation { clos: AffaireLite[]; nonOuvres: string[]; changements: Changement[]; suite?: () => void; depuisPanneau?: boolean }
 
 async function appel<T>(url: string, init?: RequestInit): Promise<T> {
   const r = await fetch(url, { ...init, headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) } });
@@ -49,6 +49,9 @@ export default function Saisie({ prenom }: { prenom?: string }) {
   const [info, setInfo] = useState<string | null>(null);
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [selecteur, setSelecteur] = useState<string[] | null>(null);
+  const [selecteurPanneau, setSelecteurPanneau] = useState(false);
+  // Brouillon du panneau « Créneaux à compléter » : créneau → affaire, enregistré d'un bloc.
+  const [brouillon, setBrouillon] = useState<Map<string, string>>(new Map());
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const [masquerWeekends, setMasquerWeekends] = useState(false);
   useEffect(() => { try { setMasquerWeekends(localStorage.getItem('tpsw_masquer_weekends') === '1'); } catch { /* stockage indisponible */ } }, []);
@@ -105,14 +108,16 @@ export default function Saisie({ prenom }: { prenom?: string }) {
   };
 
   // ── Enregistrement avec confirmations ──────────────────────────────────
-  async function envoyer(changements: Changement[]) {
-    if (!changements.length) return;
+  async function envoyer(changements: Changement[]): Promise<boolean> {
+    if (!changements.length) return false;
     setEnCours(true); setErreur(null);
     try {
       const d = await appel<DonneesMois>('/api/mois', { method: 'PUT', body: JSON.stringify({ ym, prenom, changements }) });
       setData(d); setSelection(new Set());
+      return true;
     } catch (e) {
       setErreur((e as Error).message);
+      return false;
     } finally { setEnCours(false); }
   }
 
@@ -124,7 +129,7 @@ export default function Saisie({ prenom }: { prenom?: string }) {
     proposer(changements);
   }
 
-  function proposer(changements: Changement[]) {
+  function proposer(changements: Changement[], suite?: () => void, depuisPanneau = false) {
     const clos = new Map<string, AffaireLite>();
     const nonOuvres = new Set<string>();
     for (const ch of changements) {
@@ -134,16 +139,36 @@ export default function Saisie({ prenom }: { prenom?: string }) {
       if (a?.clos && !(deja?.affaireId === a.id && deja.confirmClot)) clos.set(a.id, a);
       if (!estOuvre(ch.date) && !(deja?.affaireId && deja.confirmNonOuvre)) nonOuvres.add(ch.date);
     }
-    if (clos.size || nonOuvres.size) setConfirmation({ clos: [...clos.values()], nonOuvres: [...nonOuvres].sort(), changements });
-    else envoyer(changements.map(ch => ({ ...ch, confirmClot: true, confirmNonOuvre: true })));
+    if (clos.size || nonOuvres.size) setConfirmation({ clos: [...clos.values()], nonOuvres: [...nonOuvres].sort(), changements, suite, depuisPanneau });
+    else envoyer(changements.map(ch => ({ ...ch, confirmClot: true, confirmNonOuvre: true }))).then(ok => { if (ok) suite?.(); });
+  }
+
+  // Panneau des créneaux manquants : enregistre le brouillon, puis soumet le mois si demandé.
+  function validerBrouillon(soumettre: boolean) {
+    const changements: Changement[] = [...brouillon].map(([cle, affaireId]) => {
+      const [date, c] = cle.split('|') as [string, Creneau];
+      return { date, creneau: c, affaireId };
+    });
+    if (!changements.length) { if (soumettre) workflow('soumettre'); return; }
+    proposer(changements, () => {
+      setBrouillon(new Map());
+      if (soumettre) workflow('soumettre');
+      else setInfo(`${changements.length} créneau${changements.length > 1 ? 'x' : ''} enregistré${changements.length > 1 ? 's' : ''}.`);
+    }, true);
   }
 
   function choisir(a: AffaireLite | null) {
     const cles = selecteur || [];
     setSelecteur(null);
     if (a) { noterRecente(a.id); setRecentes(lireRecentes()); }
+    if (selecteurPanneau) {
+      setSelecteurPanneau(false);
+      setBrouillon(b => { const n = new Map(b); cles.forEach(c => { if (a) n.set(c, a.id); else n.delete(c); }); return n; });
+      return;
+    }
     preparer(cles, a);
   }
+  const ouvrirSelecteurPanneau = (cles: string[]) => { setSelecteurPanneau(true); setSelecteur(cles); };
 
   // Copie de la semaine précédente (jours ouvrés, sans toucher aux créneaux verrouillés).
   async function copierSemainePrecedente(lundi: string) {
@@ -487,9 +512,64 @@ export default function Saisie({ prenom }: { prenom?: string }) {
       )}
       {enCours && <div className="sauvegarde">Enregistrement…</div>}
 
+      {panneau === 'manquants' && data && (() => {
+        const manq = data.completude.manquants;
+        const parJour = new Map<string, Creneau[]>();
+        for (const m of manq) parJour.set(m.date, [...(parJour.get(m.date) || []), m.creneau]);
+        const restants = manq.filter(m => !brouillon.has(k(m.date, m.creneau))).map(m => k(m.date, m.creneau));
+        const peutSoumettre = !data.vueAdmin && (data.statut === 'A compléter' || data.statut === 'Refusée');
+        return (
+          <Panneau titre="Créneaux à compléter" onFermer={() => { setPanneau(null); setBrouillon(new Map()); }}>
+            {erreur && <div className="bandeau err">{erreur}</div>}
+            {manq.length === 0 ? <p>Le mois est complet.</p> : <>
+              <p className="discret">{manq.length} créneau{manq.length > 1 ? 'x' : ''} ouvré{manq.length > 1 ? 's' : ''} sans affaire. Choisis une affaire pour chacun, puis soumets le mois.</p>
+              {data.editable && restants.length > 1 && (
+                <button className="btn btn-sec btn-sm" disabled={enCours} onClick={() => ouvrirSelecteurPanneau(restants)}>Tout remplir avec… ({restants.length})</button>
+              )}
+              <div className="manquants">
+                {[...parJour].map(([date, cs]) => (
+                  <div className="manquant-jour" key={date}>
+                    <div className="manquant-date">{frDateLong(date)}</div>
+                    {cs.map(c => {
+                      const cle = k(date, c);
+                      const choisi = brouillon.get(cle) || null;
+                      return (
+                        <div className={`creneau ${choisi ? '' : 'manquant'}`} key={cle}>
+                          <span />
+                          <span className="lib">{LIB[c]}</span>
+                          <button className="choix" disabled={!data.editable || enCours} onClick={() => ouvrirSelecteurPanneau([cle])}>
+                            {pilule(choisi, cle)}<span className="chevron">▾</span>
+                          </button>
+                          {choisi && <button className="vider" title="Retirer" disabled={enCours} onClick={() => setBrouillon(b => { const n = new Map(b); n.delete(cle); return n; })}>×</button>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </>}
+            <div className="manquants-actions">
+              {peutSoumettre && (
+                <button className="btn btn-pri" disabled={enCours || !data.editable || restants.length > 0} onClick={() => validerBrouillon(true)}
+                  title={restants.length ? `Encore ${restants.length} créneau(x) à remplir` : undefined}>
+                  Soumettre à validation{restants.length > 0 ? ` (${restants.length} restant${restants.length > 1 ? 's' : ''})` : ''}
+                </button>
+              )}
+              {brouillon.size > 0 && (
+                <button className="btn btn-sec" disabled={enCours} onClick={() => validerBrouillon(false)}>
+                  Enregistrer {peutSoumettre ? 'sans soumettre' : ''}
+                </button>
+              )}
+            </div>
+          </Panneau>
+        );
+      })()}
+      {panneau === 'refus' && <Refus onFermer={() => setPanneau(null)} onValider={m => workflow('refuser', m)} />}
+      {panneau === 'commentaires' && <Commentaires ym={ym} prenom={prenom} onFermer={() => setPanneau(null)} />}
+
       {selecteur && (
         <SelecteurAffaire affaires={affaires} mesIds={mesIds} recentes={recentes} nbCreneaux={selecteur.length}
-          onChoisir={choisir} onFermer={() => setSelecteur(null)} />
+          onChoisir={choisir} onFermer={() => { setSelecteur(null); setSelecteurPanneau(false); }} />
       )}
 
       {confirmation && (
@@ -504,12 +584,13 @@ export default function Saisie({ prenom }: { prenom?: string }) {
               <ul>{confirmation.nonOuvres.map(d => <li key={d}>{frDateLong(d)}{jourParDate.get(d)?.ferie ? ` — ${jourParDate.get(d)!.ferie}` : ''}</li>)}</ul>
             </>}
             <div className="dialogue-actions">
-              <button className="btn btn-sec" onClick={() => { const cles = confirmation.changements.map(c => k(c.date, c.creneau)); setConfirmation(null); setSelecteur(cles); }}>
+              <button className="btn btn-sec" onClick={() => { const cles = confirmation.changements.map(c => k(c.date, c.creneau)); const p = confirmation.depuisPanneau; setConfirmation(null); if (!p) setSelecteur(cles); }}>
                 Modifier la saisie
               </button>
               <button className="btn btn-pri" onClick={() => {
                 const ch = confirmation.changements.map(c => ({ ...c, confirmClot: true, confirmNonOuvre: true }));
-                setConfirmation(null); envoyer(ch);
+                const suite = confirmation.suite;
+                setConfirmation(null); envoyer(ch).then(ok => { if (ok) suite?.(); });
               }}>
                 {confirmation.clos.length ? 'Je sais que cette affaire est terminée, je conserve tout de même ma saisie' : 'Je confirme ce temps'}
               </button>
@@ -518,24 +599,6 @@ export default function Saisie({ prenom }: { prenom?: string }) {
         </div>
       )}
 
-      {panneau === 'manquants' && data && (
-        <Panneau titre="Créneaux à compléter" onFermer={() => setPanneau(null)}>
-          {data.completude.manquants.length === 0 ? <p>Le mois est complet.</p> : (
-            <ul className="liste-manquants">
-              {data.completude.manquants.map(m => (
-                <li key={k(m.date, m.creneau)}>
-                  <button className="lien" onClick={() => {
-                    setPanneau(null); aller({ vue: 'liste' });
-                    setTimeout(() => document.getElementById(`c-${m.date}-${m.creneau}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
-                  }}>{frDateLong(m.date)} — {LIB[m.creneau].toLowerCase()}</button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Panneau>
-      )}
-      {panneau === 'refus' && <Refus onFermer={() => setPanneau(null)} onValider={m => workflow('refuser', m)} />}
-      {panneau === 'commentaires' && <Commentaires ym={ym} prenom={prenom} onFermer={() => setPanneau(null)} />}
     </div>
   );
 }
