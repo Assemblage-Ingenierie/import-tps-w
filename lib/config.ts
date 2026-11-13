@@ -142,28 +142,16 @@ export const VALIDATION = {
     decisionLe: 'fld8SGWe8zn5u7hFd',
     decisionPar: 'fldOkVI1HOMLSOo6a',
     motif: 'fldL59Nj8eubyVw7P',
+    // Table unique (13/11/2026) : commentaires et paramètres y sont aussi rangés.
+    type: 'fldaF4xoArvUQsKyR',         // « Mois » ou « Paramètre » (vide = Mois)
+    commentaires: 'fldeLHo2ecU8nlgYX', // fil JSON des commentaires du mois
+    actif: 'fldLFrSAardlVWKZO',        // lignes Paramètre
+    description: 'fldHERif4417af1R4',  // lignes Paramètre
   },
 };
 
-export const COMMENTAIRES = {
-  table: 'tblZKAa8jf9TFtR6C',
-  f: {
-    texte: 'fldLJXIbkdZIl4axf',
-    emailCollab: 'fldznMWo3K1PsFdJR',
-    mois: 'fldUQXgybh7aY3pjr',
-    env: 'fldARGhlRoVptPPru',
-    auteur: 'fldlqqFFwgkzZKNiZ',
-    auteurNom: 'fldN4BIxjthX3uPlc',
-    creeLe: 'fldnb4VfPB3p4ZK6r',
-    cleMois: 'fldhRQeWRVZdXV9GC',
-  },
-};
-
-export const PARAMETRES = {
-  table: 'tbltsJGwGWZL9rhgv',
-  f: { cle: 'fldFdqpNocQrh5XZ0', actif: 'fldEjk39VlJxM4l3Q' },
-};
-export const PARAM_BALANCE_USERS = 'balance_visible_users';
+// Clé de la ligne « Paramètre » dans la table AI Timesheet.
+export const PARAM_BALANCE_USERS = 'PARAMETRE|balance_visible_users';
 
 // Noms de champs utilisés dans filterByFormula (Airtable n'accepte pas les IDs).
 export const NOMS = {
@@ -173,6 +161,5 @@ export const NOMS = {
   validationCle: 'Clé',
   validationMois: 'Mois',
   validationEnv: 'Environnement',
-  commentairesCleMois: 'Clé mois',
-  parametresCle: 'Clé',
+  validationCommentaires: 'Commentaires',
 };

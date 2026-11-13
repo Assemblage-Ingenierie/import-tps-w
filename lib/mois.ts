@@ -1,6 +1,6 @@
 // Le mois de saisie d'un collaborateur : assemblage des saisies, des absences
 // Payfit et des jours fériés ; statut de validation ; commentaires ; règles.
-import { VALIDATION, COMMENTAIRES, PARAMETRES, PARAM_BALANCE_USERS, NOMS, envCourant, LIBELLE_ENV } from './config';
+import { VALIDATION, PARAM_BALANCE_USERS, NOMS, envCourant, LIBELLE_ENV } from './config';
 import { lister, creer, modifier, supprimer, texte, chaine, memo, oublier } from './airtable';
 import { joursDuMois, ferieNom, isWeekend, estOuvre, exerciceDe, aujourdhuiParis, estDateValide } from './dates';
 import { chargerAbsences, absencesDe } from './payfit';
@@ -17,30 +17,37 @@ export function cleMois(prenom: string, ym: string): string {
 }
 
 // ── Statut mensuel ───────────────────────────────────────────────────────
-interface LigneStatut { id: string | null; statut: Statut; motif: string | null; soumisLe: string | null; decisionLe: string | null }
+interface LigneStatut { id: string | null; statut: Statut; motif: string | null; soumisLe: string | null; decisionLe: string | null; fil: CommentaireStocke[] }
+
+// Un commentaire tel que stocké dans le champ « Commentaires » (JSON) de la ligne du mois.
+interface CommentaireStocke { id: string; texte: string; auteur: string; auteurNom: string; creeLe: string }
+function lireFil(v: unknown): CommentaireStocke[] {
+  try { const x = JSON.parse(texte(v) || '[]'); return Array.isArray(x) ? x : []; } catch { return []; }
+}
 
 export async function lireStatut(prenom: string, ym: string): Promise<LigneStatut> {
   const f = VALIDATION.f;
   const recs = await lister(VALIDATION.table, {
-    fields: [f.statut, f.motif, f.soumisLe, f.decisionLe],
+    fields: [f.statut, f.motif, f.soumisLe, f.decisionLe, f.commentaires],
     filterByFormula: `{${NOMS.validationCle}}=${chaine(cleMois(prenom, ym))}`,
     max: 1,
   });
   const r = recs[0];
-  if (!r) return { id: null, statut: 'A compléter', motif: null, soumisLe: null, decisionLe: null };
+  if (!r) return { id: null, statut: 'A compléter', motif: null, soumisLe: null, decisionLe: null, fil: [] };
   return {
     id: r.id,
     statut: (texte(r.fields[f.statut]) || 'A compléter') as Statut,
     motif: texte(r.fields[f.motif]) || null,
     soumisLe: texte(r.fields[f.soumisLe]) || null,
     decisionLe: texte(r.fields[f.decisionLe]) || null,
+    fil: lireFil(r.fields[f.commentaires]),
   };
 }
 
 export async function statutsDuMois(ym: string): Promise<Map<string, LigneStatut & { cle: string }>> {
   const f = VALIDATION.f;
   const recs = await lister(VALIDATION.table, {
-    fields: [f.cle, f.statut, f.motif, f.soumisLe, f.decisionLe],
+    fields: [f.cle, f.statut, f.motif, f.soumisLe, f.decisionLe, f.commentaires],
     filterByFormula: `AND({${NOMS.validationMois}}=${chaine(ym)}, {${NOMS.validationEnv}}=${chaine(LIBELLE_ENV[envCourant()])})`,
   });
   const m = new Map<string, LigneStatut & { cle: string }>();
@@ -52,6 +59,7 @@ export async function statutsDuMois(ym: string): Promise<Map<string, LigneStatut
       motif: texte(r.fields[f.motif]) || null,
       soumisLe: texte(r.fields[f.soumisLe]) || null,
       decisionLe: texte(r.fields[f.decisionLe]) || null,
+      fil: lireFil(r.fields[f.commentaires]),
     });
   }
   return m;
@@ -66,6 +74,7 @@ async function ecrireStatut(p: Personne, ym: string, actuel: LigneStatut, maj: R
     [f.email]: p.email || null,
     [f.mois]: ym,
     [f.env]: LIBELLE_ENV[envCourant()],
+    [f.type]: 'Mois',
     ...(fiche ? { [f.collab]: [fiche.id] } : {}),
     ...maj,
   }]);
@@ -226,98 +235,94 @@ export async function decider(u: Utilisateur, p: Personne, ym: string, decision:
 }
 
 // ── Commentaires ─────────────────────────────────────────────────────────
-// Clé « Prénom - exercice|AAAA-MM|Environnement » : sert à filtrer sans
-// dépendre des noms des autres champs de la table.
-function versCommentaire(r: { id: string; fields: Record<string, unknown> }, moi: string): Commentaire {
-  const f = COMMENTAIRES.f;
-  const auteur = texte(r.fields[f.auteur]).toLowerCase();
+// Rangés sur la ligne du mois (table AI Timesheet), dans le champ
+// « Commentaires » : un tableau JSON { id, texte, auteur, auteurNom, creeLe }.
+function versCommentaire(c: CommentaireStocke, mois: string, moi: string): Commentaire {
+  const auteur = String(c.auteur || '').toLowerCase();
   return {
-    id: r.id, texte: texte(r.fields[f.texte]), auteur, auteurNom: texte(r.fields[f.auteurNom]),
-    creeLe: texte(r.fields[f.creeLe]), mois: texte(r.fields[f.cleMois]).split('|')[1] || '',
+    id: c.id, texte: c.texte, auteur, auteurNom: c.auteurNom, creeLe: c.creeLe, mois,
     modifiable: !!moi && auteur === moi.toLowerCase(),
   };
 }
-const CHAMPS_COMMENTAIRE = () => { const f = COMMENTAIRES.f; return [f.texte, f.auteur, f.auteurNom, f.creeLe, f.cleMois]; };
 
 export async function commentaires(p: Personne, ym: string, moi = ''): Promise<Commentaire[]> {
-  const recs = await lister(COMMENTAIRES.table, {
-    fields: CHAMPS_COMMENTAIRE(),
-    filterByFormula: `{${NOMS.commentairesCleMois}}=${chaine(cleMois(p.prenom, ym))}`,
-  });
-  return recs.map(r => versCommentaire(r, moi)).sort((a, b) => a.creeLe.localeCompare(b.creeLe));
+  const st = await lireStatut(p.prenom, ym);
+  return st.fil.map(c => versCommentaire(c, ym, moi)).sort((a, b) => a.creeLe.localeCompare(b.creeLe));
 }
 
 // Tous les commentaires d'une personne (tous mois, environnement courant), du plus récent au plus ancien.
 export async function commentairesDe(p: Personne, moi = ''): Promise<Commentaire[]> {
+  const f = VALIDATION.f;
   const debut = `${p.prenom} - `;
   const fin = `|${LIBELLE_ENV[envCourant()]}`;
-  const recs = await lister(COMMENTAIRES.table, {
-    fields: CHAMPS_COMMENTAIRE(),
-    filterByFormula: `AND(LEFT({${NOMS.commentairesCleMois}}, ${debut.length})=${chaine(debut)}, RIGHT({${NOMS.commentairesCleMois}}, ${fin.length})=${chaine(fin)})`,
+  const recs = await lister(VALIDATION.table, {
+    fields: [f.cle, f.commentaires],
+    filterByFormula: `AND(LEFT({${NOMS.validationCle}}, ${debut.length})=${chaine(debut)}, RIGHT({${NOMS.validationCle}}, ${fin.length})=${chaine(fin)}, {${NOMS.validationCommentaires}}!='')`,
   });
-  return recs.map(r => versCommentaire(r, moi)).sort((a, b) => b.creeLe.localeCompare(a.creeLe));
+  return recs
+    .flatMap(r => { const mois = texte(r.fields[f.cle]).split('|')[1] || ''; return lireFil(r.fields[f.commentaires]).map(c => versCommentaire(c, mois, moi)); })
+    .sort((a, b) => b.creeLe.localeCompare(a.creeLe));
 }
 
 // Commentaires d'un mois pour tout le monde (tableau de validation), par clé de mois.
 export async function commentairesDuMois(ym: string): Promise<Map<string, Commentaire[]>> {
-  const motif = `|${ym}|${LIBELLE_ENV[envCourant()]}`;
-  const recs = await lister(COMMENTAIRES.table, {
-    fields: CHAMPS_COMMENTAIRE(),
-    filterByFormula: `FIND(${chaine(motif)}, {${NOMS.commentairesCleMois}})`,
-  });
   const m = new Map<string, Commentaire[]>();
-  for (const r of recs) {
-    const cle = texte(r.fields[COMMENTAIRES.f.cleMois]);
-    m.set(cle, [...(m.get(cle) || []), versCommentaire(r, '')]);
+  for (const [cle, st] of await statutsDuMois(ym)) {
+    if (st.fil.length) m.set(cle, st.fil.map(c => versCommentaire(c, ym, '')).sort((a, b) => a.creeLe.localeCompare(b.creeLe)));
   }
-  for (const l of m.values()) l.sort((a, b) => a.creeLe.localeCompare(b.creeLe));
   return m;
-}
-
-// Seul l'auteur d'un commentaire peut le modifier ou le supprimer.
-async function commentaireDe(u: Utilisateur, id: string) {
-  if (!/^rec[A-Za-z0-9]{14}$/.test(id)) throw new ErreurHttp(400, 'Commentaire invalide');
-  const f = COMMENTAIRES.f;
-  const r = (await lister(COMMENTAIRES.table, { fields: [f.auteur, f.cleMois], filterByFormula: `RECORD_ID()=${chaine(id)}`, max: 1 }))[0];
-  if (!r) throw new ErreurHttp(404, 'Commentaire introuvable');
-  if (texte(r.fields[f.auteur]).toLowerCase() !== u.email.toLowerCase()) throw new ErreurHttp(403, 'Vous ne pouvez modifier que vos propres commentaires.');
-  return r;
-}
-export async function modifierCommentaire(u: Utilisateur, id: string, txt: string): Promise<void> {
-  const t = String(txt || '').trim().slice(0, 4000);
-  if (!t) throw new ErreurHttp(400, 'Commentaire vide');
-  await commentaireDe(u, id);
-  await modifier(COMMENTAIRES.table, [{ id, fields: { [COMMENTAIRES.f.texte]: t } }]);
-}
-export async function supprimerCommentaire(u: Utilisateur, id: string): Promise<void> {
-  await commentaireDe(u, id);
-  await supprimer(COMMENTAIRES.table, [id]);
 }
 
 export async function ajouterCommentaire(u: Utilisateur, p: Personne, ym: string, txt: string): Promise<void> {
   const t = String(txt || '').trim().slice(0, 4000);
   if (!t) throw new ErreurHttp(400, 'Commentaire vide');
-  const f = COMMENTAIRES.f;
-  await creer(COMMENTAIRES.table, [{
-    [f.texte]: t, [f.emailCollab]: p.email || null, [f.mois]: ym, [f.env]: LIBELLE_ENV[envCourant()],
-    [f.auteur]: u.email, [f.auteurNom]: u.nom || u.email, [f.creeLe]: new Date().toISOString(),
-    [f.cleMois]: cleMois(p.prenom, ym),
-  }]);
+  const st = await lireStatut(p.prenom, ym);
+  const fil = [...st.fil, { id: crypto.randomUUID(), texte: t, auteur: u.email, auteurNom: u.nom || u.email, creeLe: new Date().toISOString() }];
+  await ecrireStatut(p, ym, st, { [VALIDATION.f.commentaires]: JSON.stringify(fil) });
+}
+
+// Seul l'auteur d'un commentaire peut le modifier ou le supprimer.
+async function ligneDuCommentaire(u: Utilisateur, id: string) {
+  if (!/^[A-Za-z0-9-]{8,64}$/.test(id)) throw new ErreurHttp(400, 'Commentaire invalide');
+  const f = VALIDATION.f;
+  const r = (await lister(VALIDATION.table, {
+    fields: [f.commentaires],
+    filterByFormula: `FIND(${chaine(`"id":"${id}"`)}, {${NOMS.validationCommentaires}})`,
+    max: 1,
+  }))[0];
+  const fil = r ? lireFil(r.fields[f.commentaires]) : [];
+  const c = fil.find(x => x.id === id);
+  if (!r || !c) throw new ErreurHttp(404, 'Commentaire introuvable');
+  if (String(c.auteur).toLowerCase() !== u.email.toLowerCase()) throw new ErreurHttp(403, 'Vous ne pouvez modifier que vos propres commentaires.');
+  return { ligne: r.id, fil };
+}
+export async function modifierCommentaire(u: Utilisateur, id: string, txt: string): Promise<void> {
+  const t = String(txt || '').trim().slice(0, 4000);
+  if (!t) throw new ErreurHttp(400, 'Commentaire vide');
+  const { ligne, fil } = await ligneDuCommentaire(u, id);
+  const maj = fil.map(c => (c.id === id ? { ...c, texte: t } : c));
+  await modifier(VALIDATION.table, [{ id: ligne, fields: { [VALIDATION.f.commentaires]: JSON.stringify(maj) } }]);
+}
+export async function supprimerCommentaire(u: Utilisateur, id: string): Promise<void> {
+  const { ligne, fil } = await ligneDuCommentaire(u, id);
+  const maj = fil.filter(c => c.id !== id);
+  await modifier(VALIDATION.table, [{ id: ligne, fields: { [VALIDATION.f.commentaires]: maj.length ? JSON.stringify(maj) : null } }]);
 }
 
 // ── Paramètres ───────────────────────────────────────────────────────────
+// Lignes de type « Paramètre » de la table AI Timesheet, repérées par leur clé.
 export function balanceVisibleUsers(): Promise<{ id: string | null; actif: boolean }> {
   return memo('param:balance', 60 * 1000, async () => {
-    const f = PARAMETRES.f;
-    const r = (await lister(PARAMETRES.table, { fields: [f.actif], filterByFormula: `{${NOMS.parametresCle}}=${chaine(PARAM_BALANCE_USERS)}`, max: 1 }))[0];
+    const f = VALIDATION.f;
+    const r = (await lister(VALIDATION.table, { fields: [f.actif], filterByFormula: `{${NOMS.validationCle}}=${chaine(PARAM_BALANCE_USERS)}`, max: 1 }))[0];
     return { id: r?.id || null, actif: !!r?.fields[f.actif] };
   });
 }
 export async function definirBalanceVisible(actif: boolean): Promise<void> {
-  const f = PARAMETRES.f;
+  const f = VALIDATION.f;
   const p = await balanceVisibleUsers();
-  if (p.id) await modifier(PARAMETRES.table, [{ id: p.id, fields: { [f.actif]: actif } }]);
-  else await creer(PARAMETRES.table, [{ [f.cle]: PARAM_BALANCE_USERS, [f.actif]: actif }]);
+  if (p.id) await modifier(VALIDATION.table, [{ id: p.id, fields: { [f.actif]: actif } }]);
+  else await creer(VALIDATION.table, [{ [f.cle]: PARAM_BALANCE_USERS, [f.type]: 'Paramètre', [f.actif]: actif }]);
   oublier('param:');
 }
 
@@ -345,7 +350,7 @@ export async function validerEnLot(u: Utilisateur, prenoms: string[], ym: string
       const fiche = siennes.find(x => x.exercice === ex);
       aCreer.push({
         [f.cle]: cleMois(prenom, ym), [f.email]: siennes.find(x => x.email)?.email || null, [f.mois]: ym,
-        [f.env]: LIBELLE_ENV[envCourant()], ...(fiche ? { [f.collab]: [fiche.id] } : {}), ...decision,
+        [f.env]: LIBELLE_ENV[envCourant()], [f.type]: 'Mois', ...(fiche ? { [f.collab]: [fiche.id] } : {}), ...decision,
       });
     }
     valides.push(prenom);
