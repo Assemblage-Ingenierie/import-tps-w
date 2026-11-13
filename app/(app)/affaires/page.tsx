@@ -96,7 +96,7 @@ function MesAffaires() {
                   <td className="affaire-actions">
                     {vue === 'terminees' && a.gerable && <button className="lien" disabled={enCours === a.id} onClick={() => agir(a.id, { action: 'etat', etat: 'En Cours' }, `${a.code} rouverte : elle repasse dans « En cours ».`)}>Rouvrir</button>}
                     {vue === 'en-cours' && <Link href="/saisie">Saisir</Link>}
-                    {a.role.includes('Chef·fe de projet') && <button className="lien discret-lien" disabled={enCours === a.id} onClick={() => { if (confirm(`Ne plus être Chef·fe de projet de ${a.code} ?`)) agir(a.id, { action: 'cdp', ajouter: false }, `Tu n’es plus Chef·fe de projet de ${a.code}.`); }}>Ne plus suivre</button>}
+                    {a.role.includes('Chef·fe de projet') && <button className="lien discret-lien" disabled={enCours === a.id} onClick={() => { if (confirm(`Te retirer des Chef·fe·s de projet de ${a.code} ? Les autres CDP de l’affaire sont conservés.`)) agir(a.id, { action: 'cdp', ajouter: false }, `Tu n’es plus Chef·fe de projet de ${a.code} : l’affaire est retirée de tes affaires.`); }}>Me retirer des CDP</button>}
                   </td>
                 </tr>
               ))}
