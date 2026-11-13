@@ -69,7 +69,7 @@ export default function PageBalances() {
         </div>
         <div className="tableau-wrap">
           <table className="tableau">
-            <thead><tr><th>Code</th><th>Affaire</th><th>Pôle</th><th>État</th><th>CDP</th><th className="num">Marché PI</th><th className="num">{d.libelles.globale}</th><th className="num">{d.libelles.exercice}</th><th className="num">Jours {d.exercice}</th></tr></thead>
+            <thead><tr><th>Code</th><th>Affaire</th><th>Pôle</th><th>État</th><th>CDP</th><th className="num">Marché PI</th><th className="num">{d.libelles.globale}</th><th className="num">{d.libelles.exercice}</th><th className="num" title="Temps saisi sur l'affaire depuis le début de l'exercice, tous collaborateurs confondus">Temps saisi {d.exercice}</th></tr></thead>
             <tbody>
               {lignes.map(l => (
                 <Fragment key={l.id}>
