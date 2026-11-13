@@ -422,7 +422,7 @@ export default function Saisie({ prenom }: { prenom?: string }) {
         <div className="total-mois">
           <small>Total</small>
           <strong>{nb(total)} j</strong>
-          {data && <span className={`statut ${statutClasse}`}>{data.statut === 'A compléter' ? 'Brouillon' : data.statut}</span>}
+          {data && <span className={`statut ${statutClasse} ${data.modifieApresEnvoi ? 'a-resoumettre' : ''}`}>{data.modifieApresEnvoi ? 'À soumettre à nouveau' : data.statut === 'A compléter' ? 'Brouillon' : data.statut}</span>}
         </div>
       </div>
 
@@ -440,7 +440,7 @@ export default function Saisie({ prenom }: { prenom?: string }) {
         {vue === 'liste' && <label className="case"><input type="checkbox" checked={masquerWeekends} onChange={e => basculerWeekends(e.target.checked)} /> Désactiver les week-ends</label>}
         <button className="lien" onClick={() => setPanneau('commentaires')}>Voir les commentaires</button>
         {data && !data.vueAdmin && (data.statut === 'A compléter' || data.statut === 'Refusée') && (
-          <button className="btn btn-pri" disabled={enCours || !data.editable} onClick={() => workflow('soumettre')}>Soumettre le mois</button>
+          <button className="btn btn-pri" disabled={enCours || !data.editable} onClick={() => workflow('soumettre')}>{data.modifieApresEnvoi || data.statut === 'Refusée' ? 'Soumettre à nouveau' : 'Soumettre le mois'}</button>
         )}
         {data?.vueAdmin && <>
           {data.statut !== 'Validée' && <button className="btn btn-pri" disabled={enCours} onClick={() => workflow('valider')}>Valider le mois</button>}
@@ -452,6 +452,8 @@ export default function Saisie({ prenom }: { prenom?: string }) {
       {data && (
         <div className="bandeaux">
           {data.env === 'test' && <div className="bandeau info">Environnement de test : les saisies sont écrites dans la table « Temps W TEST ».</div>}
+          {!data.vueAdmin && data.modifieApresEnvoi && <div className="bandeau warn"><strong>Temps modifié après l&apos;envoi pour validation.</strong> N&apos;oublie pas de soumettre à nouveau ton temps de travail.</div>}
+          {!data.vueAdmin && data.statut === 'En attente de validation' && <div className="bandeau info">Mois envoyé pour validation. Tu peux encore le modifier tant qu&apos;il n&apos;est pas validé : il faudra alors le soumettre à nouveau.</div>}
           {data.statut === 'Refusée' && data.motifRefus && <div className="bandeau err"><strong>Mois refusé.</strong> {data.motifRefus} — corrige ta saisie puis soumets de nouveau.</div>}
           {data.raisonVerrou && <div className="bandeau info">🔒 {data.raisonVerrou}</div>}
           {!data.absencesDisponibles && <div className="bandeau warn">Calendrier d&apos;absences Payfit indisponible : les absences ne sont pas pré-remplies.</div>}

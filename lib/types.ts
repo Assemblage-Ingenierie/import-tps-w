@@ -50,6 +50,7 @@ export interface DonneesMois {
   completude: { attendus: number; couverts: number; manquants: Manquant[] };
   conflits: Conflit[]; // temps saisi sur un créneau d'absence Payfit
   vueAdmin: boolean;
+  modifieApresEnvoi: boolean;
 }
 
 export interface Changement {

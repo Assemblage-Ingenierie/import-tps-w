@@ -124,7 +124,6 @@ function analyser(ym: string, e: Etat) {
 function verrou(u: Utilisateur, ym: string, statut: Statut): string | null {
   if (u.role === 'admin') return null;
   if (ym > aujourdhuiParis().slice(0, 7)) return 'La saisie sur un mois futur n\'est pas ouverte.';
-  if (statut === 'En attente de validation') return 'Mois soumis : en attente de validation.';
   if (statut === 'Validée') return 'Mois validé : la saisie est verrouillée.';
   return null;
 }
@@ -148,6 +147,8 @@ export async function donneesMois(u: Utilisateur, p: Personne, ym: string): Prom
     completude: { attendus: a.attendus, couverts: a.couverts, manquants: a.manquants },
     conflits: a.conflits,
     vueAdmin: u.role === 'admin',
+    // Déjà envoyé une fois, modifié depuis : à soumettre à nouveau.
+    modifieApresEnvoi: st.statut === 'A compléter' && !!st.soumisLe,
   };
 }
 
@@ -185,6 +186,9 @@ export async function enregistrer(u: Utilisateur, p: Personne, ym: string, chang
   }
   const cx: Contexte = { personne: p, fiche: await ficheDe(p.prenom, exerciceDe(ym + '-01')), auteur: u.email };
   await appliquer(cx, e.saisies, cibles);
+  if (u.role !== 'admin' && st.statut === 'En attente de validation') {
+    await ecrireStatut(p, ym, st, { [VALIDATION.f.statut]: 'A compléter' });
+  }
   return donneesMois(u, p, ym);
 }
 

@@ -70,7 +70,7 @@ function Validation() {
                     <input type="checkbox" checked={sel.has(l.prenom)} onChange={() => setSel(s => { const n = new Set(s); if (n.has(l.prenom)) n.delete(l.prenom); else n.add(l.prenom); return n; })} />
                   )}</td>
                   <td className="nom">{l.prenom} {l.nom}{!l.email && <span className="discret" title="Champ Email vide dans la fiche Collaborateur"> · email ?</span>}</td>
-                  <td><span className={`statut ${CLASSE[l.statut]}`}>{l.statut}</span>{l.soumisLe && <small className="discret"> {new Date(l.soumisLe).toLocaleDateString('fr-FR')}</small>}</td>
+                  <td><span className={`statut ${CLASSE[l.statut]}`}>{l.statut}</span>{l.soumisLe && <small className="discret"> {l.statut === 'A compléter' ? 'modifié après envoi du ' : ''}{new Date(l.soumisLe).toLocaleDateString('fr-FR')}</small>}</td>
                   <td className={`num ${l.couverts < l.attendus ? 'alerte' : ''}`}>{nb(l.couverts / 2)} / {nb(l.attendus / 2)} j</td>
                   <td className={`num ${l.conflits ? 'alerte' : ''}`}>{l.conflits || '—'}</td>
                   <td className={`num ${l.clotureesMaintenues ? 'alerte' : ''}`}>{l.clotureesMaintenues || '—'}</td>
