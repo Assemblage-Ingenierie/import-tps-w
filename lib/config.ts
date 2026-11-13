@@ -34,6 +34,7 @@ export interface ChampsTemps {
   linkAffaire: string;
   confClot: string | null;
   confNonOuvre: string | null;
+  confAbsence: string | null;
   confLe: string | null;
   source: string | null;
   saisiPar: string | null;
@@ -56,6 +57,7 @@ export const TEMPS: Record<Env, { table: string; f: ChampsTemps }> = {
       linkAffaire: 'fldeH3P2wI8u1Yj8R',
       confClot: 'fld06GNUo82YtxMhP',
       confNonOuvre: 'fld9Xqvz5LMTN5HiR',
+      confAbsence: 'fldXqIPxGLApPd2Wk',
       confLe: 'fldqtHzYy4xbIRXmB',
       source: 'fldFHQcDZX1UT0OiJ',
       saisiPar: 'fldpJvaIDONiPIoRw',
@@ -78,6 +80,7 @@ export const TEMPS: Record<Env, { table: string; f: ChampsTemps }> = {
       // À créer dans Tps W avant la bascule (cf. docs/conception-interface-user.md)
       confClot: null,
       confNonOuvre: null,
+      confAbsence: null,
       confLe: null,
       source: null,
       saisiPar: null,

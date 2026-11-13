@@ -19,7 +19,7 @@ const k = (d: string, c: Creneau) => `${d}|${c}`;
 const nb = (v: number) => String(Math.round(v * 10) / 10).replace('.', ',');
 
 type Vue = 'liste' | 'calendrier';
-interface Confirmation { clos: AffaireLite[]; nonOuvres: string[]; changements: Changement[]; suite?: () => void; depuisPanneau?: boolean }
+interface Confirmation { clos: AffaireLite[]; nonOuvres: string[]; absences: string[]; changements: Changement[]; suite?: () => void; depuisPanneau?: boolean }
 
 async function appel<T>(url: string, init?: RequestInit): Promise<T> {
   const r = await fetch(url, { ...init, headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) } });
@@ -113,10 +113,11 @@ export default function Saisie({ prenom }: { prenom?: string }) {
   const conflits = useMemo(() => new Set((data?.conflits || []).map(c => k(c.date, c.creneau))), [data]);
   const manquants = useMemo(() => new Set((data?.completude.manquants || []).map(m => k(m.date, m.creneau))), [data]);
 
+  const absCle = (cle: string) => { const [d, c] = cle.split('|') as [string, Creneau]; return !!jourParDate.get(d)?.absence[c]; };
   const verrouille = (d: string, c: Creneau) => {
     if (!data?.editable) return true;
-    const j = jourParDate.get(d);
-    return !!j?.absence[c] && !data.vueAdmin;
+    void d; void c;
+    return false;
   };
 
   // ── Enregistrement avec confirmations ──────────────────────────────────
@@ -144,15 +145,17 @@ export default function Saisie({ prenom }: { prenom?: string }) {
   function proposer(changements: Changement[], suite?: () => void, depuisPanneau = false) {
     const clos = new Map<string, AffaireLite>();
     const nonOuvres = new Set<string>();
+    const absences = new Set<string>();
     for (const ch of changements) {
       if (!ch.affaireId) continue;
       const a = affParId.get(ch.affaireId);
       const deja = creneaux.get(k(ch.date, ch.creneau));
       if (a?.clos && !(deja?.affaireId === a.id && deja.confirmClot)) clos.set(a.id, a);
       if (!estOuvre(ch.date) && !(deja?.affaireId && deja.confirmNonOuvre)) nonOuvres.add(ch.date);
+      if (jourParDate.get(ch.date)?.absence[ch.creneau] && !(deja?.affaireId && deja.confirmAbsence)) absences.add(k(ch.date, ch.creneau));
     }
-    if (clos.size || nonOuvres.size) setConfirmation({ clos: [...clos.values()], nonOuvres: [...nonOuvres].sort(), changements, suite, depuisPanneau });
-    else envoyer(changements.map(ch => ({ ...ch, confirmClot: true, confirmNonOuvre: true }))).then(ok => { if (ok) suite?.(); });
+    if (clos.size || nonOuvres.size || absences.size) setConfirmation({ clos: [...clos.values()], nonOuvres: [...nonOuvres].sort(), absences: [...absences].sort(), changements, suite, depuisPanneau });
+    else envoyer(changements.map(ch => ({ ...ch, confirmClot: true, confirmNonOuvre: true, confirmAbsence: true }))).then(ok => { if (ok) suite?.(); });
   }
 
   // Panneau des créneaux manquants : enregistre le brouillon, puis soumet le mois si demandé.
@@ -318,8 +321,13 @@ export default function Saisie({ prenom }: { prenom?: string }) {
       setData(d); setPanneau(null);
       setInfo(action === 'soumettre' ? 'Mois soumis pour validation.' : action === 'valider' ? 'Mois validé.' : action === 'refuser' ? 'Mois refusé : le collaborateur peut corriger et soumettre de nouveau.' : 'Mois rouvert.');
     } catch (e) {
-      const err = e as Error & { data?: { manquants?: unknown[] } };
+      const err = e as Error & { data?: { manquants?: unknown[]; conflits?: { date: string; creneau: Creneau; affaireId: string }[] } };
       if (err.data?.manquants) setPanneau('manquants');
+      if (action === 'soumettre' && err.data?.conflits?.length) {
+        const cs = err.data.conflits;
+        setConfirmation({ clos: [], nonOuvres: [], absences: cs.map(c => k(c.date, c.creneau)), changements: cs.map(c => ({ date: c.date, creneau: c.creneau, affaireId: c.affaireId })), suite: () => workflow('soumettre') });
+        return;
+      }
       setErreur(err.message);
     } finally { setEnCours(false); }
   }
@@ -352,7 +360,7 @@ export default function Saisie({ prenom }: { prenom?: string }) {
     const a = id ? affParId.get(id) : null;
     return a
       ? <span className="pilule" title={`${a.code} — ${a.nom}`}><span className="pastille" style={{ background: couleur(a) }} />{a.code} <span className="pilule-nom">({a.nom})</span></span>
-      : <span className="pilule vide">{manquants.has(cle) ? 'À compléter' : 'Projet'}</span>;
+      : <span className={`pilule vide ${absCle(cle) ? 'pilule-absence' : ''}`}>{absCle(cle) ? 'Absence (Payfit)' : manquants.has(cle) ? 'À compléter' : 'Projet'}</span>;
   };
 
   const mentions = (d: string, c: Creneau) => {
@@ -361,6 +369,7 @@ export default function Saisie({ prenom }: { prenom?: string }) {
     const out: React.ReactNode[] = [];
     if (conflits.has(k(d, c))) out.push(<div key="abs" className="mention err">Temps saisi pendant une absence Payfit — à corriger</div>);
     if (a?.clos) out.push(<div key="clos" className="mention warn">{s?.confirmClot ? 'Affaire clôturée mais saisie maintenue par le collaborateur' : `Affaire clôturée (${a.etat})`}</div>);
+    if (s?.affaireId && s.confirmAbsence && jourParDate.get(d)?.absence[c]) out.push(<div key="abs-ok" className="mention info">Saisie sur une absence Payfit, confirmée par le collaborateur</div>);
     if (s?.affaireId && s.confirmNonOuvre && !estOuvre(d)) out.push(<div key="no" className="mention info">Saisie un jour non ouvré, confirmée par le collaborateur</div>);
     return out;
   };
@@ -370,14 +379,6 @@ export default function Saisie({ prenom }: { prenom?: string }) {
     const s = creneaux.get(cle);
     const abs = j.absence[c];
     const lock = verrouille(j.date, c);
-    if (abs && !s?.affaireId) {
-      return (
-        <div className="creneau verrou" key={c}>
-          <span className="lib">{LIB[c]}</span>
-          <span className="pilule absence">Absence (Payfit)</span>
-        </div>
-      );
-    }
     return (
       <div className={`creneau ${selection.has(cle) ? 'sel' : ''} ${manquants.has(cle) ? 'manquant' : ''} ${glisse?.cibles.has(cle) ? 'cible-drop' : ''}`} key={c} id={`c-${j.date}-${c}`} data-cle={lock ? undefined : cle}>
         {lock ? <span /> : <input type="checkbox" aria-label={`Sélectionner ${LIB[c]} du ${frDateLong(j.date)}`} checked={selection.has(cle)} onChange={() => undefined} onClick={e => cocher(cle, e.shiftKey)} title="Maj + clic pour sélectionner une plage" />}
@@ -443,7 +444,7 @@ export default function Saisie({ prenom }: { prenom?: string }) {
               const s = creneaux.get(cle);
               const a = s?.affaireId ? affParId.get(s.affaireId) : null;
               const abs = j.absence[c] && !s?.affaireId;
-              const lock = verrouille(j.date, c) || abs;
+              const lock = verrouille(j.date, c);
               return (
                 <button key={c} disabled={lock || enCours} data-cle={lock ? undefined : cle}
                   onPointerDown={a && !lock ? e => debutGlisse(e, cle, a.id) : undefined}
@@ -520,7 +521,7 @@ export default function Saisie({ prenom }: { prenom?: string }) {
           {data.statut === 'Refusée' && data.motifRefus && <div className="bandeau err"><strong>Mois refusé.</strong> {data.motifRefus} — corrige ta saisie puis soumets de nouveau.</div>}
           {data.raisonVerrou && <div className="bandeau info">🔒 {data.raisonVerrou}</div>}
           {!data.absencesDisponibles && <div className="bandeau warn">Calendrier d&apos;absences Payfit indisponible : les absences ne sont pas pré-remplies.</div>}
-          {data.conflits.length > 0 && <div className="bandeau err">{data.conflits.length} créneau(x) saisi(s) pendant une absence enregistrée dans Payfit : vide ces créneaux, ou corrige l&apos;absence dans Payfit.</div>}
+          {data.conflits.length > 0 && <div className="bandeau err">{data.conflits.length} créneau(x) saisi(s) sur une absence enregistrée dans Payfit : confirme-les ou corrige-les avant de soumettre ton mois.</div>}
           <div className="completude">
             <div className="barre"><div style={{ width: `${data.completude.attendus ? (100 * data.completude.couverts) / data.completude.attendus : 0}%` }} /></div>
             <span>{nb(data.completude.couverts / 2)} / {nb(data.completude.attendus / 2)} j ouvrés couverts
@@ -634,16 +635,20 @@ export default function Saisie({ prenom }: { prenom?: string }) {
               <h3>{confirmation.clos.length ? 'Et ' : ''}{confirmation.nonOuvres.length > 1 ? 'ces jours ne sont pas ouvrés' : 'ce jour n\'est pas ouvré'} : confirmes-tu ce temps ?</h3>
               <ul>{confirmation.nonOuvres.map(d => <li key={d}>{frDateLong(d)}{jourParDate.get(d)?.ferie ? ` — ${jourParDate.get(d)!.ferie}` : ''}</li>)}</ul>
             </>}
+            {confirmation.absences.length > 0 && <>
+              <h3>{confirmation.clos.length || confirmation.nonOuvres.length ? 'Et tu as' : 'Tu as'} une absence sur {confirmation.absences.length > 1 ? 'ces créneaux' : 'ce jour'}</h3>
+              <ul>{confirmation.absences.map(x => { const [d, c] = x.split('|') as [string, Creneau]; return <li key={x}>{frDateLong(d)} — {LIB[c].toLowerCase()} : absence validée dans Payfit</li>; })}</ul>
+            </>}
             <div className="dialogue-actions">
               <button className="btn btn-sec" onClick={() => { const cles = confirmation.changements.map(c => k(c.date, c.creneau)); const p = confirmation.depuisPanneau; setConfirmation(null); if (!p) setSelecteur(cles); }}>
-                Modifier la saisie
+                {confirmation.absences.length && !confirmation.clos.length ? 'Modifier ma saisie' : 'Modifier la saisie'}
               </button>
               <button className="btn btn-pri" onClick={() => {
-                const ch = confirmation.changements.map(c => ({ ...c, confirmClot: true, confirmNonOuvre: true }));
+                const ch = confirmation.changements.map(c => ({ ...c, confirmClot: true, confirmNonOuvre: true, confirmAbsence: true }));
                 const suite = confirmation.suite;
                 setConfirmation(null); envoyer(ch).then(ok => { if (ok) suite?.(); });
               }}>
-                {confirmation.clos.length ? 'Je sais que cette affaire est terminée, je conserve tout de même ma saisie' : 'Je confirme ce temps'}
+                {confirmation.clos.length ? 'Je sais que cette affaire est terminée, je conserve tout de même ma saisie' : confirmation.absences.length ? 'Confirmer tout de même ma saisie' : 'Je confirme ce temps'}
               </button>
             </div>
           </div>

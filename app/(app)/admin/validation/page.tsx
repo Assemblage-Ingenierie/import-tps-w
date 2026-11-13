@@ -59,7 +59,7 @@ function Validation() {
           <table className="tableau">
             <thead><tr>
               <th></th><th>Collaborateur</th><th>Statut</th><th className="num">Complétude</th>
-              <th className="num" title="Temps saisi sur un créneau d'absence Payfit">Pendant absence</th>
+              <th className="num" title="Créneaux où du temps a été saisi sur une absence Payfit (confirmés par le collaborateur)">Saisie sur absence</th>
               <th className="num" title="Saisies sur une affaire clôturée">Affaires clôturées</th>
               <th className="num" title="Saisies un jour non ouvré confirmées">Jours non ouvrés</th><th>Commentaires</th><th></th>
             </tr></thead>

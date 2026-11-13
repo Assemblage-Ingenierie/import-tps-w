@@ -101,7 +101,7 @@ function analyser(ym: string, e: Etat) {
       const k = `${s.date}|${c}`;
       if (occupes.has(k)) continue; // doublon : le premier fait foi à l'affichage
       occupes.set(k, s);
-      creneaux.push({ date: s.date, creneau: c, affaireId: s.affaireId, confirmClot: s.confirmClot, confirmNonOuvre: s.confirmNonOuvre });
+      creneaux.push({ date: s.date, creneau: c, affaireId: s.affaireId, confirmClot: s.confirmClot, confirmNonOuvre: s.confirmNonOuvre, confirmAbsence: s.confirmAbsence });
     }
   }
   const manquants: Manquant[] = [];
@@ -111,7 +111,7 @@ function analyser(ym: string, e: Etat) {
     for (const c of CRENEAUX) {
       const s = occupes.get(`${j.date}|${c}`);
       const abs = j.absence[c];
-      if (abs && s?.affaireId) conflits.push({ date: j.date, creneau: c, affaireId: s.affaireId });
+      if (abs && s?.affaireId && !s.confirmAbsence) conflits.push({ date: j.date, creneau: c, affaireId: s.affaireId });
       if (!estOuvre(j.date)) continue;
       attendus++;
       if (abs || (s && s.affaireId)) couverts++;
@@ -162,9 +162,9 @@ export async function enregistrer(u: Utilisateur, p: Personne, ym: string, chang
     if (!ch || !estDateValide(ch.date) || !joursDuMois(ym).includes(ch.date) || !CRENEAUX.includes(ch.creneau)) {
       throw new ErreurHttp(400, 'Créneau invalide');
     }
-    const absent = e.absences?.has(`${ch.date}|${ch.creneau}`);
-    if (absent && ch.affaireId && u.role !== 'admin') {
-      throw new ErreurHttp(409, 'Ce créneau est couvert par une absence Payfit : il n\'est pas modifiable.');
+    const absent = !!e.absences?.has(`${ch.date}|${ch.creneau}`);
+    if (absent && ch.affaireId && !ch.confirmAbsence) {
+      throw new ErreurHttp(409, 'Confirmation requise : absence Payfit sur ce créneau', { confirmer: 'absence', date: ch.date, creneau: ch.creneau });
     }
     let affaire: Affaire | null = null;
     if (ch.affaireId) {
@@ -181,6 +181,7 @@ export async function enregistrer(u: Utilisateur, p: Personne, ym: string, chang
       date: ch.date, creneau: ch.creneau, affaire,
       confirmClot: !!(affaire?.clos && ch.confirmClot),
       confirmNonOuvre: !!(affaire && !estOuvre(ch.date) && ch.confirmNonOuvre),
+      confirmAbsence: !!(affaire && absent && ch.confirmAbsence),
     });
   }
   const cx: Contexte = { personne: p, fiche: await ficheDe(p.prenom, exerciceDe(ym + '-01')), auteur: u.email };
@@ -198,7 +199,7 @@ export async function soumettre(u: Utilisateur, p: Personne, ym: string): Promis
   if (ym > aujourdhuiParis().slice(0, 7)) throw new ErreurHttp(409, 'Impossible de soumettre un mois futur.');
   const d = await donneesMois(u, p, ym);
   if (d.completude.manquants.length) throw new ErreurHttp(409, `Mois incomplet : ${d.completude.manquants.length} créneau(x) à compléter.`, { manquants: d.completude.manquants });
-  if (d.conflits.length) throw new ErreurHttp(409, `${d.conflits.length} créneau(x) saisi(s) pendant une absence Payfit : à corriger avant de soumettre.`);
+  if (d.conflits.length) throw new ErreurHttp(409, `${d.conflits.length} créneau(x) saisi(s) sur une absence Payfit : confirme-les ou corrige-les avant de soumettre.`, { conflits: d.conflits });
   await ecrireStatut(p, ym, st, {
     [VALIDATION.f.statut]: 'En attente de validation',
     [VALIDATION.f.soumisLe]: new Date().toISOString(),

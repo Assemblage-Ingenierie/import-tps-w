@@ -20,6 +20,7 @@ export interface Saisie {
   code: string;
   confirmClot: boolean;
   confirmNonOuvre: boolean;
+  confirmAbsence: boolean;
   source: string;
   prenom: string;
 }
@@ -38,6 +39,7 @@ function versSaisie(r: { id: string; fields: Champs }): Saisie {
     code: texte(r.fields[f.code]),
     confirmClot: f.confClot ? !!r.fields[f.confClot] : false,
     confirmNonOuvre: f.confNonOuvre ? !!r.fields[f.confNonOuvre] : false,
+    confirmAbsence: f.confAbsence ? !!r.fields[f.confAbsence] : false,
     source: f.source ? texte(r.fields[f.source]) : '',
     prenom: texte(r.fields[f.prenom]),
   };
@@ -45,7 +47,7 @@ function versSaisie(r: { id: string; fields: Champs }): Saisie {
 
 function champsLecture(): string[] {
   const f = conf().f;
-  return [f.jour, f.creneau, f.temps, f.linkAffaire, f.code, f.prenom, f.confClot, f.confNonOuvre, f.source]
+  return [f.jour, f.creneau, f.temps, f.linkAffaire, f.code, f.prenom, f.confClot, f.confNonOuvre, f.confAbsence, f.source]
     .filter((x): x is string => !!x);
 }
 
@@ -85,6 +87,7 @@ export interface Cible {
   affaire: Affaire | null; // null = vider le créneau
   confirmClot: boolean;
   confirmNonOuvre: boolean;
+  confirmAbsence?: boolean;
 }
 
 export interface Contexte {
@@ -93,7 +96,7 @@ export interface Contexte {
   auteur: string; // email de qui écrit
 }
 
-function champsEcriture(cx: Contexte, date: string, creneau: Creneau, a: Affaire, confirmClot: boolean, confirmNonOuvre: boolean): Champs {
+function champsEcriture(cx: Contexte, date: string, creneau: Creneau, a: Affaire, confirmClot: boolean, confirmNonOuvre: boolean, confirmAbsence = false): Champs {
   const f = conf().f;
   const ch: Champs = {
     [f.prenom]: cx.personne.prenom,
@@ -110,7 +113,8 @@ function champsEcriture(cx: Contexte, date: string, creneau: Creneau, a: Affaire
   if (cx.fiche) ch[f.linkCollab] = [cx.fiche.id];
   if (f.confClot) ch[f.confClot] = confirmClot;
   if (f.confNonOuvre) ch[f.confNonOuvre] = confirmNonOuvre;
-  if (f.confLe) ch[f.confLe] = confirmClot || confirmNonOuvre ? new Date().toISOString() : null;
+  if (f.confAbsence) ch[f.confAbsence] = confirmAbsence;
+  if (f.confLe) ch[f.confLe] = confirmClot || confirmNonOuvre || confirmAbsence ? new Date().toISOString() : null;
   if (f.source) ch[f.source] = 'Application';
   if (f.saisiPar) ch[f.saisiPar] = cx.auteur;
   return ch;
@@ -157,7 +161,7 @@ export async function appliquer(cx: Contexte, existantes: Saisie[], cibles: Cibl
       parCreneau.set(k, []);
       continue;
     }
-    const champs = champsEcriture(cx, c.date, c.creneau, c.affaire, c.confirmClot, c.confirmNonOuvre);
+    const champs = champsEcriture(cx, c.date, c.creneau, c.affaire, c.confirmClot, c.confirmNonOuvre, c.confirmAbsence);
     if (garde?.recordId) aModifier.set(garde.recordId, { ...(aModifier.get(garde.recordId) || {}), ...champs });
     else aCreer.push(champs);
     parCreneau.set(k, [{ ...(garde || ({} as Saisie)), affaireId: c.affaire.id }]);

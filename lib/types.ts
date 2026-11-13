@@ -21,6 +21,7 @@ export interface Creneau_ {
   affaireId: string | null;
   confirmClot: boolean;
   confirmNonOuvre: boolean;
+  confirmAbsence: boolean;
 }
 
 export interface Jour {
@@ -59,6 +60,7 @@ export interface Changement {
   affaireId: string | null;
   confirmClot?: boolean;
   confirmNonOuvre?: boolean;
+  confirmAbsence?: boolean;
 }
 
 export interface Commentaire {
