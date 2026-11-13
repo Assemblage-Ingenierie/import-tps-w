@@ -373,7 +373,7 @@ export default function Saisie({ prenom }: { prenom?: string }) {
   // Raccourcis clavier : ←/→ change de mois (hors champ de saisie et hors fenêtre).
   useEffect(() => {
     const f = (e: KeyboardEvent) => {
-      if (selecteur || confirmation || panneau) return;
+      if (selecteur || confirmation || panneau || wrapped) return;
       const t = e.target as HTMLElement;
       if (t && ['INPUT', 'TEXTAREA'].includes(t.tagName)) return;
       if (e.key === 'ArrowLeft') aller({ ym: moisDecale(ym, -1) });
