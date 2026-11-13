@@ -25,15 +25,16 @@ function MesAffaires() {
     }).catch(e => setErr(e.message));
   }, []);
 
-  // Une couleur distincte par affaire (la plus travaillée en premier), comme dans la saisie.
-  const couleurs = useMemo(() => couleursDuMois(
-    new Map((d?.mes || []).map(a => [a.id, a.joursExercice] as [string, number])),
-    new Map((d?.mes || []).map(a => [a.id, a] as [string, AffaireMienne])),
-  ), [d]);
 
   const liste = useMemo(() => (d?.mes || [])
     .filter(a => (vue === 'terminees' ? a.clos : !a.clos))
     .filter(a => !q || `${a.code} ${a.nom}`.toLowerCase().includes(q.toLowerCase())), [d, vue, q]);
+
+  // Une couleur distincte par affaire affichée (la plus travaillée en premier), comme dans la saisie.
+  const couleurs = useMemo(() => couleursDuMois(
+    new Map(liste.map(a => [a.id, a.joursExercice] as [string, number])),
+    new Map(liste.map(a => [a.id, a] as [string, AffaireMienne])),
+  ), [liste]);
 
   return (
     <div>
