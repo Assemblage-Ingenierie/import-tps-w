@@ -434,3 +434,14 @@ textarea:focus, .recherche:focus, select:focus { box-shadow: 0 0 0 3px var(--rou
 
 /* Connexion : logo noir */
 .marque { background: none; width: auto; height: auto; }
+
+/* Commentaires : onglets, actions, colonne du tableau de validation */
+.comm-onglets { margin: 0 0 4px; }
+.fil-actions { display: flex; gap: 10px; margin-top: 6px; }
+.fil-actions .lien { font-size: 12px; padding: 0; }
+.fil-mois { font-size: 11.5px; margin-left: 6px; padding: 0; }
+.comm-cell { max-width: 260px; }
+.comm-cell a { display: flex; gap: 6px; align-items: baseline; color: var(--violet); text-decoration: none; min-width: 0; }
+.comm-cell a:hover .comm-extrait { color: var(--rouge); }
+.comm-nb { font-weight: 600; white-space: nowrap; }
+.comm-extrait { color: var(--noir70); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }

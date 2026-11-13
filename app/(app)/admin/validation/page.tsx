@@ -61,7 +61,7 @@ function Validation() {
               <th></th><th>Collaborateur</th><th>Statut</th><th className="num">Complétude</th>
               <th className="num" title="Temps saisi sur un créneau d'absence Payfit">Pendant absence</th>
               <th className="num" title="Saisies sur une affaire clôturée">Affaires clôturées</th>
-              <th className="num" title="Saisies un jour non ouvré confirmées">Jours non ouvrés</th><th></th>
+              <th className="num" title="Saisies un jour non ouvré confirmées">Jours non ouvrés</th><th>Commentaires</th><th></th>
             </tr></thead>
             <tbody>
               {visibles.map(l => (
@@ -75,10 +75,15 @@ function Validation() {
                   <td className={`num ${l.conflits ? 'alerte' : ''}`}>{l.conflits || '—'}</td>
                   <td className={`num ${l.clotureesMaintenues ? 'alerte' : ''}`}>{l.clotureesMaintenues || '—'}</td>
                   <td className="num">{l.nonOuvresConfirmes || '—'}</td>
+                  <td className="comm-cell">{l.dernierCommentaire ? (
+                    <Link href={`/admin/collaborateur?prenom=${encodeURIComponent(l.prenom)}&ym=${ym}&commentaires=1`} title={`${l.dernierCommentaire.auteurNom} : ${l.dernierCommentaire.texte}`}>
+                      <span className="comm-nb">💬 {l.commentaires}</span> <span className="comm-extrait">{l.dernierCommentaire.auteurNom.split(' ')[0]} : {l.dernierCommentaire.texte}</span>
+                    </Link>
+                  ) : <span className="discret">—</span>}</td>
                   <td><Link href={`/admin/collaborateur?prenom=${encodeURIComponent(l.prenom)}&ym=${ym}`}>Ouvrir</Link></td>
                 </tr>
               ))}
-              {!visibles.length && <tr><td colSpan={8} className="discret">Aucun collaborateur.</td></tr>}
+              {!visibles.length && <tr><td colSpan={9} className="discret">Aucun collaborateur.</td></tr>}
             </tbody>
           </table>
         </div>

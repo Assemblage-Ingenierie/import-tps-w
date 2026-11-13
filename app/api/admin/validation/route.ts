@@ -4,7 +4,7 @@ import { exigerAdmin, gerer, json, ErreurHttp } from '@/lib/auth';
 import { estMoisValide, exerciceDe, joursDuMois, estOuvre } from '@/lib/dates';
 import { fiches, affairesParId } from '@/lib/referentiels';
 import { saisiesDeTousLeMois, type Saisie } from '@/lib/temps';
-import { statutsDuMois, cleMois, validerEnLot } from '@/lib/mois';
+import { statutsDuMois, cleMois, validerEnLot, commentairesDuMois } from '@/lib/mois';
 import { chargerAbsences, absencesDe } from '@/lib/payfit';
 import type { LigneValidation, Creneau } from '@/lib/types';
 
@@ -16,8 +16,8 @@ export async function GET(req: Request) {
     const ym = new URL(req.url).searchParams.get('ym');
     if (!estMoisValide(ym)) throw new ErreurHttp(400, 'Mois invalide');
     const ex = exerciceDe(ym + '-01');
-    const [toutes, saisies, statuts, index, affaires] = await Promise.all([
-      fiches(), saisiesDeTousLeMois(ym), statutsDuMois(ym), chargerAbsences().catch(() => null), affairesParId(),
+    const [toutes, saisies, statuts, index, affaires, comms] = await Promise.all([
+      fiches(), saisiesDeTousLeMois(ym), statutsDuMois(ym), chargerAbsences().catch(() => null), affairesParId(), commentairesDuMois(ym),
     ]);
     const ouvres = joursDuMois(ym).filter(estOuvre);
     const lignes: LigneValidation[] = toutes.filter(f => f.exercice === ex).map(f => {
@@ -36,12 +36,16 @@ export async function GET(req: Request) {
         if (a && s?.affaireId) conflits++;
       }
       const st = statuts.get(cleMois(f.prenom, ym));
+      const cs = comms.get(cleMois(f.prenom, ym)) || [];
+      const dernier = cs[cs.length - 1];
       return {
         cle: f.cle, prenom: f.prenom, nom, ficheId: f.id, email,
         statut: st?.statut || 'A compléter', soumisLe: st?.soumisLe || null,
         attendus, couverts, conflits,
         clotureesMaintenues: siennes.filter(s => s.confirmClot || (!!s.affaireId && !!affaires.get(s.affaireId)?.clos)).length,
         nonOuvresConfirmes: siennes.filter(s => s.confirmNonOuvre).length,
+        commentaires: cs.length,
+        dernierCommentaire: dernier ? { auteurNom: dernier.auteurNom, texte: dernier.texte, creeLe: dernier.creeLe } : null,
       };
     }).sort((a, b) => a.prenom.localeCompare(b.prenom, 'fr'));
     return json({ ym, lignes });

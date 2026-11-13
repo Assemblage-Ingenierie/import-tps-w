@@ -67,6 +67,8 @@ export interface Commentaire {
   auteur: string;
   auteurNom: string;
   creeLe: string;
+  mois: string;        // « 2026-11 »
+  modifiable: boolean; // vrai seulement pour l'auteur
 }
 
 export interface AffaireMienne extends AffaireLite {
@@ -88,6 +90,8 @@ export interface LigneValidation {
   conflits: number;
   clotureesMaintenues: number;
   nonOuvresConfirmes: number;
+  commentaires: number;
+  dernierCommentaire: { auteurNom: string; texte: string; creeLe: string } | null;
 }
 
 export interface LigneBalance {

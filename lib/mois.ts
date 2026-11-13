@@ -1,7 +1,7 @@
 // Le mois de saisie d'un collaborateur : assemblage des saisies, des absences
 // Payfit et des jours fériés ; statut de validation ; commentaires ; règles.
 import { VALIDATION, COMMENTAIRES, PARAMETRES, PARAM_BALANCE_USERS, NOMS, envCourant, LIBELLE_ENV } from './config';
-import { lister, creer, modifier, texte, chaine, memo, oublier } from './airtable';
+import { lister, creer, modifier, supprimer, texte, chaine, memo, oublier } from './airtable';
 import { joursDuMois, ferieNom, isWeekend, estOuvre, exerciceDe, aujourdhuiParis, estDateValide } from './dates';
 import { chargerAbsences, absencesDe } from './payfit';
 import { affairesParId, ficheDe, fiches, versLite, type Personne, type Affaire } from './referentiels';
@@ -225,15 +225,72 @@ export async function decider(u: Utilisateur, p: Personne, ym: string, decision:
 }
 
 // ── Commentaires ─────────────────────────────────────────────────────────
-export async function commentaires(p: Personne, ym: string): Promise<Commentaire[]> {
+// Clé « Prénom - exercice|AAAA-MM|Environnement » : sert à filtrer sans
+// dépendre des noms des autres champs de la table.
+function versCommentaire(r: { id: string; fields: Record<string, unknown> }, moi: string): Commentaire {
   const f = COMMENTAIRES.f;
+  const auteur = texte(r.fields[f.auteur]).toLowerCase();
+  return {
+    id: r.id, texte: texte(r.fields[f.texte]), auteur, auteurNom: texte(r.fields[f.auteurNom]),
+    creeLe: texte(r.fields[f.creeLe]), mois: texte(r.fields[f.cleMois]).split('|')[1] || '',
+    modifiable: !!moi && auteur === moi.toLowerCase(),
+  };
+}
+const CHAMPS_COMMENTAIRE = () => { const f = COMMENTAIRES.f; return [f.texte, f.auteur, f.auteurNom, f.creeLe, f.cleMois]; };
+
+export async function commentaires(p: Personne, ym: string, moi = ''): Promise<Commentaire[]> {
   const recs = await lister(COMMENTAIRES.table, {
-    fields: [f.texte, f.auteur, f.auteurNom, f.creeLe],
+    fields: CHAMPS_COMMENTAIRE(),
     filterByFormula: `{${NOMS.commentairesCleMois}}=${chaine(cleMois(p.prenom, ym))}`,
   });
-  return recs
-    .map(r => ({ id: r.id, texte: texte(r.fields[f.texte]), auteur: texte(r.fields[f.auteur]), auteurNom: texte(r.fields[f.auteurNom]), creeLe: texte(r.fields[f.creeLe]) }))
-    .sort((a, b) => a.creeLe.localeCompare(b.creeLe));
+  return recs.map(r => versCommentaire(r, moi)).sort((a, b) => a.creeLe.localeCompare(b.creeLe));
+}
+
+// Tous les commentaires d'une personne (tous mois, environnement courant), du plus récent au plus ancien.
+export async function commentairesDe(p: Personne, moi = ''): Promise<Commentaire[]> {
+  const debut = `${p.prenom} - `;
+  const fin = `|${LIBELLE_ENV[envCourant()]}`;
+  const recs = await lister(COMMENTAIRES.table, {
+    fields: CHAMPS_COMMENTAIRE(),
+    filterByFormula: `AND(LEFT({${NOMS.commentairesCleMois}}, ${debut.length})=${chaine(debut)}, RIGHT({${NOMS.commentairesCleMois}}, ${fin.length})=${chaine(fin)})`,
+  });
+  return recs.map(r => versCommentaire(r, moi)).sort((a, b) => b.creeLe.localeCompare(a.creeLe));
+}
+
+// Commentaires d'un mois pour tout le monde (tableau de validation), par clé de mois.
+export async function commentairesDuMois(ym: string): Promise<Map<string, Commentaire[]>> {
+  const motif = `|${ym}|${LIBELLE_ENV[envCourant()]}`;
+  const recs = await lister(COMMENTAIRES.table, {
+    fields: CHAMPS_COMMENTAIRE(),
+    filterByFormula: `FIND(${chaine(motif)}, {${NOMS.commentairesCleMois}})`,
+  });
+  const m = new Map<string, Commentaire[]>();
+  for (const r of recs) {
+    const cle = texte(r.fields[COMMENTAIRES.f.cleMois]);
+    m.set(cle, [...(m.get(cle) || []), versCommentaire(r, '')]);
+  }
+  for (const l of m.values()) l.sort((a, b) => a.creeLe.localeCompare(b.creeLe));
+  return m;
+}
+
+// Seul l'auteur d'un commentaire peut le modifier ou le supprimer.
+async function commentaireDe(u: Utilisateur, id: string) {
+  if (!/^rec[A-Za-z0-9]{14}$/.test(id)) throw new ErreurHttp(400, 'Commentaire invalide');
+  const f = COMMENTAIRES.f;
+  const r = (await lister(COMMENTAIRES.table, { fields: [f.auteur, f.cleMois], filterByFormula: `RECORD_ID()=${chaine(id)}`, max: 1 }))[0];
+  if (!r) throw new ErreurHttp(404, 'Commentaire introuvable');
+  if (texte(r.fields[f.auteur]).toLowerCase() !== u.email.toLowerCase()) throw new ErreurHttp(403, 'Vous ne pouvez modifier que vos propres commentaires.');
+  return r;
+}
+export async function modifierCommentaire(u: Utilisateur, id: string, txt: string): Promise<void> {
+  const t = String(txt || '').trim().slice(0, 4000);
+  if (!t) throw new ErreurHttp(400, 'Commentaire vide');
+  await commentaireDe(u, id);
+  await modifier(COMMENTAIRES.table, [{ id, fields: { [COMMENTAIRES.f.texte]: t } }]);
+}
+export async function supprimerCommentaire(u: Utilisateur, id: string): Promise<void> {
+  await commentaireDe(u, id);
+  await supprimer(COMMENTAIRES.table, [id]);
 }
 
 export async function ajouterCommentaire(u: Utilisateur, p: Personne, ym: string, txt: string): Promise<void> {

@@ -86,6 +86,7 @@ export default function Saisie({ prenom }: { prenom?: string }) {
   }, [ym, qPrenom]);
 
   useEffect(() => { charger(); }, [charger]);
+  useEffect(() => { if (params.get('commentaires') === '1') setPanneau('commentaires'); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     setRecentes(lireRecentes());
     appel<{ affaires: AffaireLite[]; mes: AffaireLite[] }>(`/api/affaires?mes=1${qPrenom}`)
@@ -492,7 +493,7 @@ export default function Saisie({ prenom }: { prenom?: string }) {
         <h2>{frMois(ym).replace(/^./, x => x.toUpperCase())}</h2>
         <span className="espace" />
         {vue === 'liste' && <label className="case"><input type="checkbox" checked={masquerWeekends} onChange={e => basculerWeekends(e.target.checked)} /> Désactiver les week-ends</label>}
-        <button className="lien" onClick={() => setPanneau('commentaires')}>Ajouter un commentaire sur son mois</button>
+        <button className="lien" onClick={() => setPanneau('commentaires')}>{data?.vueAdmin ? 'Voir les commentaires' : 'Ajouter un commentaire sur son mois'}</button>
         {data && !data.vueAdmin && (data.statut === 'A compléter' || data.statut === 'Refusée') && (
           <button className="btn btn-pri" disabled={enCours || !data.editable || ym > aujourdhuiParis().slice(0, 7)} title={ym > aujourdhuiParis().slice(0, 7) ? 'Un mois futur ne peut être soumis qu\x27une fois commencé' : undefined} onClick={() => workflow('soumettre')}>{data.modifieApresEnvoi || data.statut === 'Refusée' ? 'Soumettre à nouveau' : 'Soumettre le mois'}</button>
         )}
@@ -615,7 +616,7 @@ export default function Saisie({ prenom }: { prenom?: string }) {
         );
       })()}
       {panneau === 'refus' && <Refus onFermer={() => setPanneau(null)} onValider={m => workflow('refuser', m)} />}
-      {panneau === 'commentaires' && <Commentaires ym={ym} prenom={prenom} onFermer={() => setPanneau(null)} />}
+      {panneau === 'commentaires' && <Commentaires ym={ym} prenom={prenom} onFermer={() => setPanneau(null)} onAller={m => { setPanneau(null); aller({ ym: m }); }} />}
 
       {selecteur && (
         <SelecteurAffaire affaires={affaires} mesIds={mesIds} recentes={recentes} nbCreneaux={selecteur.length}
@@ -675,26 +676,81 @@ function Refus({ onFermer, onValider }: { onFermer: () => void; onValider: (moti
   );
 }
 
-function Commentaires({ ym, prenom, onFermer }: { ym: string; prenom?: string; onFermer: () => void }) {
+function Commentaires({ ym, prenom, onFermer, onAller }: { ym: string; prenom?: string; onFermer: () => void; onAller: (ym: string) => void }) {
+  const [vue, setVue] = useState<'mois' | 'tous'>('mois');
   const [liste, setListe] = useState<Commentaire[] | null>(null);
   const [texte, setTexte] = useState('');
+  const [edition, setEdition] = useState<{ id: string; texte: string } | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const q = prenom ? `&prenom=${encodeURIComponent(prenom)}` : '';
-  useEffect(() => { appel<Commentaire[]>(`/api/commentaires?ym=${ym}${q}`).then(setListe).catch(e => setErr(e.message)); }, [ym, q]);
+  const url = vue === 'tous' ? `/api/commentaires?tous=1${q}` : `/api/commentaires?ym=${ym}${q}`;
+  const recharger = useCallback(() => {
+    setListe(null);
+    appel<Commentaire[]>(url).then(setListe).catch(e => setErr(e.message));
+  }, [url]);
+  useEffect(() => { recharger(); }, [recharger]);
+
   async function envoyer() {
-    try { setListe(await appel<Commentaire[]>('/api/commentaires', { method: 'POST', body: JSON.stringify({ ym, prenom, texte }) })); setTexte(''); }
+    setErr(null);
+    try { await appel('/api/commentaires', { method: 'POST', body: JSON.stringify({ ym, prenom, texte }) }); setTexte(''); recharger(); }
     catch (e) { setErr((e as Error).message); }
   }
+  async function enregistrerEdition() {
+    if (!edition) return;
+    setErr(null);
+    try { await appel('/api/commentaires', { method: 'PATCH', body: JSON.stringify(edition) }); setEdition(null); recharger(); }
+    catch (e) { setErr((e as Error).message); }
+  }
+  async function supprimerC(id: string) {
+    if (!confirm('Supprimer ce commentaire ?')) return;
+    setErr(null);
+    try { await appel(`/api/commentaires?id=${id}`, { method: 'DELETE' }); recharger(); }
+    catch (e) { setErr((e as Error).message); }
+  }
+  const date = (s: string) => (s ? new Date(s).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : '');
+
   return (
-    <Panneau titre={`Commentaires — ${frMois(ym)}`} onFermer={onFermer}>
+    <Panneau titre="Commentaires" onFermer={onFermer}>
+      <div className="onglets comm-onglets">
+        <button className={vue === 'mois' ? 'actif' : ''} onClick={() => setVue('mois')}>{frMois(ym).replace(/^./, x => x.toUpperCase())}</button>
+        <button className={vue === 'tous' ? 'actif' : ''} onClick={() => setVue('tous')}>Historique</button>
+      </div>
       {err && <div className="bandeau err">{err}</div>}
-      {!liste ? <p>Chargement…</p> : liste.length === 0 ? <p className="discret">Aucun commentaire sur ce mois.</p> : (
-        <ul className="fil">{liste.map(c => (
-          <li key={c.id}><div className="fil-auteur">{c.auteurNom} <span>{c.creeLe ? new Date(c.creeLe).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : ''}</span></div><div>{c.texte}</div></li>
-        ))}</ul>
-      )}
-      <textarea value={texte} onChange={e => setTexte(e.target.value)} rows={3} placeholder="Ajouter un commentaire…" />
-      <button className="btn btn-pri btn-sm" disabled={!texte.trim()} onClick={envoyer}>Envoyer</button>
+      {!liste ? <p>Chargement…</p> : liste.length === 0
+        ? <p className="discret">{vue === 'tous' ? 'Aucun commentaire pour l’instant.' : 'Aucun commentaire sur ce mois.'}</p>
+        : (
+          <ul className="fil">{liste.map(c => (
+            <li key={c.id}>
+              <div className="fil-auteur">
+                {c.auteurNom} <span>{date(c.creeLe)}</span>
+                {vue === 'tous' && c.mois && <button className="lien fil-mois" onClick={() => onAller(c.mois)}>{frMois(c.mois)}</button>}
+              </div>
+              {edition?.id === c.id ? (
+                <>
+                  <textarea value={edition.texte} onChange={e => setEdition({ id: c.id, texte: e.target.value })} rows={3} autoFocus />
+                  <div className="fil-actions">
+                    <button className="btn btn-pri btn-sm" disabled={!edition.texte.trim()} onClick={enregistrerEdition}>Enregistrer</button>
+                    <button className="btn btn-sec btn-sm" onClick={() => setEdition(null)}>Annuler</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>{c.texte}</div>
+                  {c.modifiable && (
+                    <div className="fil-actions">
+                      <button className="lien" onClick={() => setEdition({ id: c.id, texte: c.texte })}>Modifier</button>
+                      <button className="lien" onClick={() => supprimerC(c.id)}>Supprimer</button>
+                    </div>
+                  )}
+                </>
+              )}
+            </li>
+          ))}</ul>
+        )}
+      {vue === 'mois' && <>
+        <textarea value={texte} onChange={e => setTexte(e.target.value)} rows={3} placeholder="Ajouter un commentaire…" />
+        <button className="btn btn-pri btn-sm" disabled={!texte.trim()} onClick={envoyer}>Envoyer</button>
+      </>}
     </Panneau>
   );
 }
