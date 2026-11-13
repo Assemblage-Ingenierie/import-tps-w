@@ -2,13 +2,13 @@
 // le navigateur n'est jamais cru sur parole.
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { COOKIE, lireJeton, type Utilisateur } from './session';
+import { COOKIE, COOKIE_VUE, lireJeton, type Utilisateur } from './session';
 import { ErreurHttp } from './erreurs';
 export { ErreurHttp };
 
 export async function utilisateurCourant(): Promise<Utilisateur | null> {
   const c = await cookies();
-  return lireJeton(c.get(COOKIE)?.value);
+  return lireJeton(c.get(COOKIE)?.value, c.get(COOKIE_VUE)?.value);
 }
 
 

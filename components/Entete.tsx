@@ -7,7 +7,18 @@ import { useEffect, useRef, useState } from 'react';
 interface Item { href: string; label: string; brut?: boolean }
 interface Menu { label: string; items: Item[] }
 
-export default function Entete({ nom, email, admin, test }: { nom: string; email: string; admin: boolean; test: boolean }) {
+export default function Entete({ nom, email, admin, peutBasculer, test }: { nom: string; email: string; admin: boolean; peutBasculer: boolean; test: boolean }) {
+  const [bascule, setBascule] = useState(false);
+  // Bascule de vue (Admin) : le serveur pose le cookie, puis la page est
+  // rechargée pour que menus, droits et données suivent la nouvelle vue.
+  async function changerVue(vue: 'user' | 'admin') {
+    if (bascule || (vue === 'admin') === admin) return;
+    setBascule(true);
+    const r = await fetch('/api/auth/vue', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vue }) });
+    if (!r.ok) { setBascule(false); return; }
+    const ici = location.pathname + location.search;
+    location.assign(vue === 'user' && ici.startsWith('/admin') ? '/saisie' : ici);
+  }
   const [ouvert, setOuvert] = useState<string | null>(null);
   const [mobile, setMobile] = useState(false);
   const ref = useRef<HTMLElement>(null);
@@ -57,7 +68,13 @@ export default function Entete({ nom, email, admin, test }: { nom: string; email
           </div>
         ))}
         <div className="session">
-          <span title={email}>{nom}{admin && <em className="role">Admin</em>}</span>
+          <span title={email}>{nom}</span>
+          {peutBasculer && (
+            <span className="bascule" role="group" aria-label="Vue" title="Basculer entre l'interface salarié et l'interface administrateur">
+              <button className={!admin ? 'on' : ''} aria-pressed={!admin} disabled={bascule} onClick={() => changerVue('user')}>User</button>
+              <button className={admin ? 'on' : ''} aria-pressed={admin} disabled={bascule} onClick={() => changerVue('admin')}>Admin</button>
+            </span>
+          )}
           <a href="/api/auth/logout" className="deconnexion">Déconnexion</a>
         </div>
       </nav>

@@ -33,13 +33,16 @@ export default function SelecteurAffaire({ affaires, mesIds, recentes, nbCreneau
     const vus = new Set<string>();
     const prendre = (l: AffaireLite[]) => l.filter(a => ok(a) && !vus.has(a.id) && (vus.add(a.id), true));
     const ouvertes = affaires.filter(a => !a.clos);
+    // Ordre : mes affaires en cours, mes affaires terminées (saisie soumise à
+    // confirmation), codes hors affaire, récentes, toutes les affaires en cours.
     const s: { titre: string; items: AffaireLite[] }[] = [
       { titre: 'Mes affaires en cours', items: prendre(ouvertes.filter(a => mesIds.has(a.id) && !a.horsAffaire)) },
-      { titre: 'Récentes', items: prendre(recentes.map(id => parId.get(id)).filter((a): a is AffaireLite => !!a && !a.clos)) },
+      { titre: 'Mes affaires terminées', items: prendre(affaires.filter(a => a.clos && mesIds.has(a.id) && !a.horsAffaire)) },
       { titre: 'Hors affaire', items: prendre(ouvertes.filter(a => a.horsAffaire)) },
+      { titre: 'Récentes', items: prendre(recentes.map(id => parId.get(id)).filter((a): a is AffaireLite => !!a && !a.clos)) },
       { titre: 'Toutes les affaires en cours', items: prendre(ouvertes) },
     ];
-    const clos = affaires.filter(a => a.clos && ok(a));
+    const clos = affaires.filter(a => a.clos && ok(a) && !vus.has(a.id));
     return { s: s.filter(x => x.items.length), clos };
   }, [affaires, mesIds, recentes, q]);
 

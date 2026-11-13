@@ -10,6 +10,7 @@ export async function GET() {
     email: u?.email || null,
     nom: u?.nom || null,
     role: u?.role || null,
+    estAdmin: u?.estAdmin || false,
     clientId: process.env.GOOGLE_CLIENT_ID || null,
     domaine: domaineAutorise(),
   });
