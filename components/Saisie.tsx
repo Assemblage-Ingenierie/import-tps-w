@@ -3,7 +3,7 @@
 // multiple, copie de semaine, confirmations, soumission du mois, commentaires.
 // Utilisé aussi par l'Admin pour relire, corriger et valider le mois d'un
 // collaborateur (prop `prenom`).
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { AffaireLite, Changement, Creneau, DonneesMois, Jour, Commentaire } from '@/lib/types';
 import {
@@ -50,7 +50,17 @@ export default function Saisie({ prenom }: { prenom?: string }) {
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [selecteur, setSelecteur] = useState<string[] | null>(null);
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
-  const [voirWeekends, setVoirWeekends] = useState(false);
+  const [masquerWeekends, setMasquerWeekends] = useState(false);
+  useEffect(() => { try { setMasquerWeekends(localStorage.getItem('tpsw_masquer_weekends') === '1'); } catch { /* stockage indisponible */ } }, []);
+  const basculerWeekends = (v: boolean) => {
+    setMasquerWeekends(v);
+    try { localStorage.setItem('tpsw_masquer_weekends', v ? '1' : '0'); } catch { /* stockage indisponible */ }
+  };
+  // Glisser-déposer d'un créneau rempli vers des créneaux vides.
+  const [glisse, setGlisse] = useState<{ affaireId: string; x: number; y: number; cibles: Set<string> } | null>(null);
+  const ignorerClicJusqua = useRef(0);
+  // Maj + clic : dernier créneau coché, origine de la plage.
+  const ancre = useRef<string | null>(null);
   const [panneau, setPanneau] = useState<'commentaires' | 'manquants' | 'refus' | null>(null);
   const [recentes, setRecentes] = useState<string[]>([]);
 
@@ -177,6 +187,74 @@ export default function Saisie({ prenom }: { prenom?: string }) {
     setSelection(s => { const n = new Set(s); if (n.has(cle)) n.delete(cle); else n.add(cle); return n; });
   }
 
+  // Créneaux sélectionnables, dans l'ordre d'affichage (jour, matin puis après-midi).
+  function ordreSelectionnable(): string[] {
+    const out: string[] = [];
+    for (const j of data?.jours || []) {
+      const rempli = CRENEAUX.some(c => creneaux.get(k(j.date, c))?.affaireId);
+      if (vue === 'liste' && masquerWeekends && j.weekend && !rempli) continue;
+      for (const c of CRENEAUX) {
+        if (verrouille(j.date, c) || (j.absence[c] && !creneaux.get(k(j.date, c))?.affaireId)) continue;
+        out.push(k(j.date, c));
+      }
+    }
+    return out;
+  }
+
+  // Clic sur une case : bascule ; avec Maj, sélectionne toute la plage depuis le dernier créneau coché.
+  function cocher(cle: string, plage: boolean) {
+    const depuis = ancre.current;
+    if (plage && depuis && depuis !== cle) {
+      const ordre = ordreSelectionnable();
+      const a = ordre.indexOf(depuis), b = ordre.indexOf(cle);
+      if (a >= 0 && b >= 0) {
+        const morceau = ordre.slice(Math.min(a, b), Math.max(a, b) + 1);
+        setSelection(s => { const n = new Set(s); morceau.forEach(x => n.add(x)); return n; });
+        ancre.current = cle;
+        return;
+      }
+    }
+    basculer(cle);
+    ancre.current = cle;
+  }
+
+  // Glisser un créneau rempli : chaque créneau vide survolé est retenu, et
+  // l'affaire y est appliquée au relâchement (avec les confirmations
+  // habituelles). Sous 6 px de déplacement, c'est un simple clic.
+  function debutGlisse(e: React.PointerEvent, source: string, affaireId: string) {
+    if (e.button !== 0 || !data?.editable || enCours) return;
+    const x0 = e.clientX, y0 = e.clientY;
+    let actif = false;
+    const cibles = new Set<string>();
+    const bouge = (ev: PointerEvent) => {
+      if (!actif) {
+        if (Math.hypot(ev.clientX - x0, ev.clientY - y0) < 6) return;
+        actif = true;
+        document.body.classList.add('glisse-en-cours');
+      }
+      ev.preventDefault();
+      const el = document.elementFromPoint(ev.clientX, ev.clientY)?.closest('[data-cle]') as HTMLElement | null;
+      const c = el?.dataset.cle;
+      if (c && c !== source && !creneaux.get(c)?.affaireId) cibles.add(c);
+      setGlisse({ affaireId, x: ev.clientX, y: ev.clientY, cibles: new Set(cibles) });
+    };
+    const fin = () => {
+      window.removeEventListener('pointermove', bouge);
+      window.removeEventListener('pointerup', fin);
+      window.removeEventListener('pointercancel', fin);
+      document.body.classList.remove('glisse-en-cours');
+      if (!actif) return;
+      ignorerClicJusqua.current = Date.now() + 300;
+      setGlisse(null);
+      const a = affParId.get(affaireId);
+      if (a && cibles.size) preparer([...cibles], a);
+    };
+    window.addEventListener('pointermove', bouge);
+    window.addEventListener('pointerup', fin);
+    window.addEventListener('pointercancel', fin);
+  }
+  const clicIgnore = () => Date.now() < ignorerClicJusqua.current;
+
   async function workflow(action: 'soumettre' | 'valider' | 'refuser' | 'rouvrir', motif?: string) {
     setEnCours(true); setErreur(null);
     try {
@@ -245,10 +323,13 @@ export default function Saisie({ prenom }: { prenom?: string }) {
       );
     }
     return (
-      <div className={`creneau ${selection.has(cle) ? 'sel' : ''} ${manquants.has(cle) ? 'manquant' : ''}`} key={c} id={`c-${j.date}-${c}`}>
-        {!lock && <input type="checkbox" aria-label={`Sélectionner ${LIB[c]} du ${frDateLong(j.date)}`} checked={selection.has(cle)} onChange={() => basculer(cle)} />}
+      <div className={`creneau ${selection.has(cle) ? 'sel' : ''} ${manquants.has(cle) ? 'manquant' : ''} ${glisse?.cibles.has(cle) ? 'cible-drop' : ''}`} key={c} id={`c-${j.date}-${c}`} data-cle={lock ? undefined : cle}>
+        {!lock && <input type="checkbox" aria-label={`Sélectionner ${LIB[c]} du ${frDateLong(j.date)}`} checked={selection.has(cle)} onChange={() => undefined} onClick={e => cocher(cle, e.shiftKey)} title="Maj + clic pour sélectionner une plage" />}
         <span className="lib">{LIB[c]}</span>
-        <button className="choix" disabled={lock || enCours} onClick={() => setSelecteur(selection.has(cle) && selection.size > 1 ? [...selection] : [cle])}>
+        <button className={`choix ${s?.affaireId && !lock ? 'glissable' : ''}`} disabled={lock || enCours}
+          title={s?.affaireId && !lock ? 'Cliquer pour changer · glisser vers des créneaux vides pour recopier' : undefined}
+          onPointerDown={s?.affaireId && !lock ? e => debutGlisse(e, cle, s.affaireId!) : undefined}
+          onClick={() => { if (!clicIgnore()) setSelecteur(selection.has(cle) && selection.size > 1 ? [...selection] : [cle]); }}>
           {pilule(s?.affaireId || null, cle)}<span className="chevron">▾</span>
         </button>
         {!lock && s?.affaireId && <button className="vider" title="Vider le créneau" disabled={enCours} onClick={() => preparer([cle], null)}>×</button>}
@@ -272,7 +353,7 @@ export default function Saisie({ prenom }: { prenom?: string }) {
         {jours.map(j => {
           const nonOuvre = !estOuvre(j.date);
           const aDesSaisies = CRENEAUX.some(c => creneaux.get(k(j.date, c))?.affaireId);
-          if (j.weekend && !voirWeekends && !aDesSaisies) return null;
+          if (j.weekend && masquerWeekends && !aDesSaisies) return null;
           const totalJ = CRENEAUX.filter(c => { const s = creneaux.get(k(j.date, c)); return !!s?.affaireId; }).length * 0.5;
           return (
             <div className={`jour ${nonOuvre ? 'non-ouvre' : ''} ${j.date === aujourdhuiParis() ? 'auj' : ''}`} key={j.date} id={`j-${j.date}`}>
@@ -308,11 +389,17 @@ export default function Saisie({ prenom }: { prenom?: string }) {
               const abs = j.absence[c] && !s?.affaireId;
               const lock = verrouille(j.date, c) || abs;
               return (
-                <button key={c} disabled={lock || enCours}
-                  className={`cal-demi ${abs ? 'absence' : ''} ${selection.has(cle) ? 'sel' : ''} ${manquants.has(cle) ? 'manquant' : ''} ${conflits.has(cle) ? 'conflit' : ''}`}
+                <button key={c} disabled={lock || enCours} data-cle={lock ? undefined : cle}
+                  onPointerDown={a && !lock ? e => debutGlisse(e, cle, a.id) : undefined}
+                  className={`cal-demi ${abs ? 'absence' : ''} ${selection.has(cle) ? 'sel' : ''} ${manquants.has(cle) ? 'manquant' : ''} ${conflits.has(cle) ? 'conflit' : ''} ${glisse?.cibles.has(cle) ? 'cible-drop' : ''} ${a && !lock ? 'glissable' : ''}`}
                   style={a && !abs ? { background: couleurAffaire(a), color: '#fff' } : undefined}
                   title={`${LIB[c]} — ${abs ? 'Absence (Payfit)' : a ? `${a.code} ${a.nom}` : 'vide'}${s?.confirmClot ? ' — affaire clôturée, saisie maintenue' : ''}`}
-                  onClick={e => (e.shiftKey || e.ctrlKey || e.metaKey || selection.size ? basculer(cle) : setSelecteur([cle]))}>
+                  onClick={e => {
+                    if (clicIgnore()) return;
+                    if (e.shiftKey) cocher(cle, true);
+                    else if (e.ctrlKey || e.metaKey || selection.size) cocher(cle, false);
+                    else setSelecteur([cle]);
+                  }}>
                   {abs ? 'Absence' : a ? a.code : c === 'AM' ? 'matin' : 'après-midi'}{s?.confirmClot && ' ⚠'}
                 </button>
               );
@@ -350,7 +437,7 @@ export default function Saisie({ prenom }: { prenom?: string }) {
         <button className="fleche" aria-label="Mois suivant" onClick={() => aller({ ym: moisDecale(ym, 1) })}>›</button>
         <h2>{frMois(ym).replace(/^./, x => x.toUpperCase())}</h2>
         <span className="espace" />
-        {vue === 'liste' && <label className="case"><input type="checkbox" checked={voirWeekends} onChange={e => setVoirWeekends(e.target.checked)} /> Afficher les week-ends</label>}
+        {vue === 'liste' && <label className="case"><input type="checkbox" checked={masquerWeekends} onChange={e => basculerWeekends(e.target.checked)} /> Désactiver les week-ends</label>}
         <button className="lien" onClick={() => setPanneau('commentaires')}>Voir les commentaires</button>
         {data && !data.vueAdmin && (data.statut === 'A compléter' || data.statut === 'Refusée') && (
           <button className="btn btn-pri" disabled={enCours || !data.editable} onClick={() => workflow('soumettre')}>Soumettre le mois</button>
@@ -383,6 +470,11 @@ export default function Saisie({ prenom }: { prenom?: string }) {
 
       {chargement ? <div className="chargement">Chargement du mois…</div> : data && (vue === 'liste' ? vueListe() : vueCalendrier())}
 
+      {glisse && (
+        <div className="badge-glisse" style={{ left: glisse.x + 14, top: glisse.y + 14 }}>
+          {affParId.get(glisse.affaireId)?.code} → {glisse.cibles.size} créneau{glisse.cibles.size > 1 ? 'x' : ''}
+        </div>
+      )}
       {selection.size > 0 && (
         <div className="barre-selection">
           <span>{selection.size} créneau{selection.size > 1 ? 'x' : ''} sélectionné{selection.size > 1 ? 's' : ''}</span>

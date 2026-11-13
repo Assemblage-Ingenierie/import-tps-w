@@ -275,3 +275,10 @@ code { background: var(--gris-leger); padding: 1px 5px; border-radius: 3px; font
 .bascule button { padding: 3px 10px; font-size: 11.5px; font-weight: 700; color: var(--noir70); }
 .bascule button.on { background: var(--violet); color: #fff; }
 .bascule button:not(.on):hover:not(:disabled) { background: var(--gris-leger); }
+
+/* Glisser-déposer d'un créneau rempli */
+.choix.glissable, .cal-demi.glissable { cursor: grab; }
+.glisse-en-cours, .glisse-en-cours * { cursor: copy !important; user-select: none !important; }
+.creneau.cible-drop .choix { border: 2px dashed var(--rouge); background: var(--rouge-clair); }
+.cal-demi.cible-drop { outline: 2px dashed var(--rouge); outline-offset: -2px; background: var(--rouge-clair); }
+.badge-glisse { position: fixed; z-index: 90; pointer-events: none; background: var(--violet); color: #fff; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 12px; box-shadow: 0 4px 14px rgba(0,0,0,.25); white-space: nowrap; }
