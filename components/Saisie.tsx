@@ -497,7 +497,9 @@ export default function Saisie({ prenom }: { prenom?: string }) {
       </div>
 
       {data && !chargement && (
-        <MonMois data={data} affParId={affParId} onAller={(date, c) => {
+        <MonMois data={data} affParId={affParId}
+          titre={prenom ? `Le mois ${/^[aeiouyhàâéèêëîïôöûü]/i.test(data.collab.prenom) ? 'd’' : 'de '}${data.collab.prenom}` : 'Mon mois'}
+          onAller={(date, c) => {
           aller({ vue: 'liste' });
           setTimeout(() => document.getElementById(`c-${date}-${c}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 60);
         }} />

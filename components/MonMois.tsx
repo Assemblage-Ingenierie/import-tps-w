@@ -18,8 +18,9 @@ const GRIS_AUTRES = '#c5ccd3';
 interface Segment { id: string; label: string; titre: string; jours: number; couleur: string }
 interface Point { type: string; texte: string; date: string; creneau: Creneau }
 
-export default function MonMois({ data, affParId, onAller }: {
+export default function MonMois({ data, affParId, onAller, titre = 'Mon mois' }: {
   data: DonneesMois;
+  titre?: string;
   affParId: Map<string, AffaireLite>;
   onAller: (date: string, creneau: Creneau) => void;
 }) {
@@ -73,9 +74,9 @@ export default function MonMois({ data, affParId, onAller }: {
   }
 
   return (
-    <section className="mon-mois" aria-label="Mon mois">
+    <section className="mon-mois" aria-label={titre}>
       <div className="mm-tete">
-        <h2>Mon mois</h2>
+        <h2>{titre}</h2>
         <span className="mm-chiffre"><strong>{nb(total)} j</strong> saisis</span>
         <span className="mm-chiffre" title="Absences validées dans Payfit, jours ouvrés">
           {!data.absencesDisponibles ? 'Absences Payfit indisponibles'
