@@ -18,8 +18,9 @@ const GRIS_AUTRES = '#c5ccd3';
 interface Segment { id: string; label: string; titre: string; jours: number; couleur: string }
 interface Point { type: string; texte: string; date: string; creneau: Creneau }
 
-export default function MonMois({ data, affParId, onAller, titre = 'Mon mois', couleur = couleurAffaire }: {
+export default function MonMois({ data, affParId, onAller, titre = 'Mon mois', couleur = couleurAffaire, actions }: {
   data: DonneesMois;
+  actions?: React.ReactNode;
   couleur?: (a: AffaireLite) => string;
   titre?: string;
   affParId: Map<string, AffaireLite>;
@@ -84,6 +85,7 @@ export default function MonMois({ data, affParId, onAller, titre = 'Mon mois', c
             : demiAbsences ? <><strong>{nb(demiAbsences / 2)} j</strong> d&apos;absence (Payfit)</>
             : 'Aucune absence'}
         </span>
+        {actions && <span className="mm-actions">{actions}</span>}
       </div>
 
       {total === 0 ? <p className="discret">Aucun temps saisi ce mois-ci.</p> : <>

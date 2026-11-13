@@ -7,11 +7,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { AffaireLite, Changement, Creneau, DonneesMois, Jour, Commentaire } from '@/lib/types';
 import {
-  aujourdhuiParis, moisDecale, frMois, frDateLong, semaineIso, lundiDe, addDays, estOuvre, dow,
+  aujourdhuiParis, moisDecale, frMois, frDateLong, semaineIso, lundiDe, addDays, estOuvre, dow, exerciceDe, MOIS_LONG,
 } from '@/lib/dates';
 import SelecteurAffaire from './SelecteurAffaire';
 import { couleurAffaire, couleursDuMois } from './couleurs';
 import MonMois from './MonMois';
+import Wrapped, { type Carte } from './Wrapped';
+import { lancerConfettis } from './Confettis';
 
 const CRENEAUX: Creneau[] = ['AM', 'PM'];
 const LIB: Record<Creneau, string> = { AM: 'Matinée', PM: 'Après-midi' };
@@ -71,6 +73,7 @@ export default function Saisie({ prenom }: { prenom?: string }) {
   const ancre = useRef<string | null>(null);
   const [panneau, setPanneau] = useState<'commentaires' | 'manquants' | 'refus' | null>(null);
   const [recentes, setRecentes] = useState<string[]>([]);
+  const [wrapped, setWrapped] = useState<Carte[] | null>(null);
 
   const qPrenom = prenom ? `&prenom=${encodeURIComponent(prenom)}` : '';
   const aller = (o: { ym?: string; vue?: Vue }) => {
@@ -353,7 +356,8 @@ export default function Saisie({ prenom }: { prenom?: string }) {
     try {
       const d = await appel<DonneesMois>('/api/mois', { method: 'POST', body: JSON.stringify({ ym, prenom, action, motif }) });
       setData(d); setPanneau(null);
-      setInfo(action === 'soumettre' ? 'Mois soumis pour validation.' : action === 'valider' ? 'Mois validé.' : action === 'refuser' ? 'Mois refusé : le collaborateur peut corriger et soumettre de nouveau.' : 'Mois rouvert.');
+      if (action === 'soumettre') lancerConfettis();
+      setInfo(action === 'soumettre' ? `${frMois(ym).replace(/^./, x => x.toUpperCase())} bouclé le ${new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })} 🎉 Merci${d.collab.prenom ? ' ' + d.collab.prenom : ''}, ton mois est parti en validation.` : action === 'valider' ? 'Mois validé.' : action === 'refuser' ? 'Mois refusé : le collaborateur peut corriger et soumettre de nouveau.' : 'Mois rouvert.');
     } catch (e) {
       const err = e as Error & { data?: { manquants?: unknown[]; conflits?: { date: string; creneau: Creneau; affaireId: string }[] } };
       if (err.data?.manquants) setPanneau('manquants');
@@ -506,6 +510,69 @@ export default function Saisie({ prenom }: { prenom?: string }) {
     );
   };
 
+  // ── Récaps façon « Wrapped » ──
+  const FONDS = [
+    'linear-gradient(150deg, #4F46E5, #7C3AED)', 'linear-gradient(150deg, #0D9488, #065F46)',
+    'linear-gradient(150deg, #DB2777, #7E22CE)', 'linear-gradient(150deg, #D97706, #B91C1C)',
+    'linear-gradient(150deg, #0284C7, #1E3A8A)', 'linear-gradient(150deg, #1F2430, #4F46E5)',
+  ];
+  const jr = (v: number) => `${nb(v)} jour${v > 1 ? 's' : ''}`;
+  const pc = (v: number, t: number) => `${t ? Math.round((100 * v) / t) : 0} %`;
+  const qui = data?.collab.prenom || '';
+
+  function cartesMois(): Carte[] {
+    if (!data) return [];
+    const nomMois = frMois(ym).split(' ')[0];
+    const par = new Map<string, number>();
+    for (const c of data.creneaux) if (c.affaireId) par.set(c.affaireId, (par.get(c.affaireId) || 0) + 0.5);
+    const total = [...par.values()].reduce((s, v) => s + v, 0);
+    const hors = [...par].filter(([id]) => affParId.get(id)?.horsAffaire).reduce((s, [, v]) => s + v, 0);
+    const affs = [...par].filter(([id]) => !affParId.get(id)?.horsAffaire).sort((a, b) => b[1] - a[1]);
+    const absences = data.jours.filter(j => estOuvre(j.date)).reduce((s, j) => s + (j.absence.AM ? 0.5 : 0) + (j.absence.PM ? 0.5 : 0), 0);
+    const cartes: Carte[] = [{ fond: FONDS[0], sur: `${qui ? qui + ', voici ton' : 'Ton'} mois de ${nomMois}`, grand: jr(total), texte: total ? 'de travail saisis dans Carnet.' : 'Rien de saisi pour l’instant… le mois commence à peine ?' }];
+    if (affs.length) {
+      const [id, j] = affs[0];
+      const a = affParId.get(id);
+      cartes.push({ fond: FONDS[1], sur: 'Ton affaire du mois', grand: a?.code || '?', texte: `${a?.nom || ''} · ${jr(j)}, soit ${pc(j, total)} de ton temps.` });
+    }
+    if (affs.length > 1) cartes.push({ fond: FONDS[2], sur: `Tu as jonglé entre ${affs.length} affaires`, grand: `${affs.length} affaires`, liste: affs.slice(0, 5).map(([id, j]) => ({ libelle: affParId.get(id)?.code || '?', valeur: jr(j), part: j / affs[0][1] })) });
+    cartes.push({ fond: FONDS[3], sur: 'Hors affaire (gestion, formation, prospection…)', grand: pc(hors, total), texte: hors ? `${jr(hors)} pour faire tourner la maison.` : '100 % de ton temps sur les affaires !' });
+    if (absences) cartes.push({ fond: FONDS[4], sur: 'Et pour souffler', grand: jr(absences), texte: 'd’absence ce mois-ci. Bien mérité 🌴' });
+    const boucle = data.statut === 'En attente de validation' || data.statut === 'Validée';
+    cartes.push({ fond: FONDS[5], sur: boucle ? 'Mois bouclé ✅' : 'Presque fini…', grand: boucle ? 'Merci !' : `${data.completude.manquants.length} créneau${data.completude.manquants.length > 1 ? 'x' : ''}`, texte: boucle ? `${nomMois[0].toUpperCase() + nomMois.slice(1)} est ${data.statut === 'Validée' ? 'validé' : 'parti en validation'}.` : 'à compléter avant de soumettre ton mois.' });
+    return cartes;
+  }
+
+  async function ouvrirAnnee() {
+    try {
+      const b = await appel<{ exercice: string; total: number; horsAffaire: number; nbAffaires: number; nbJours: number; top: { code: string; nom: string; jours: number }[]; parMois: Record<string, number>; parPole: Record<string, number> }>(`/api/bilan${prenom ? `?prenom=${encodeURIComponent(prenom)}` : ''}`);
+      const cartes: Carte[] = [{ fond: FONDS[5], sur: `${qui ? qui + ', voici ton' : 'Ton'} année ${b.exercice}`, grand: jr(b.total), texte: `saisis depuis le 1er juillet, sur ${b.nbJours} jours travaillés.` }];
+      if (b.top[0]) cartes.push({ fond: FONDS[0], sur: 'Ton affaire de l’année', grand: b.top[0].code, texte: `${b.top[0].nom} · ${jr(b.top[0].jours)}, soit ${pc(b.top[0].jours, b.total)} de ton temps.` });
+      if (b.top.length > 1) cartes.push({ fond: FONDS[2], sur: 'Ton top 5', grand: `${b.nbAffaires} affaires`, texte: 'au compteur cette année.', liste: b.top.map(t => ({ libelle: t.code, valeur: jr(t.jours), part: t.jours / b.top[0].jours })) });
+      const mois = Object.entries(b.parMois).sort((x, y) => y[1] - x[1])[0];
+      if (mois) cartes.push({ fond: FONDS[3], sur: 'Ton mois le plus chargé', grand: MOIS_LONG[Number(mois[0].slice(5, 7)) - 1], texte: `${jr(mois[1])} saisis. Respect 💪` });
+      const poles = Object.entries(b.parPole);
+      if (poles.length) { const tot = poles.reduce((s, [, v]) => s + v, 0); cartes.push({ fond: FONDS[1], sur: 'Ton pôle de cœur', grand: `${pc(poles[0][1], tot)} ${poles[0][0]}`, liste: poles.slice(0, 4).map(([p, v]) => ({ libelle: p, valeur: pc(v, tot), part: v / poles[0][1] })) }); }
+      cartes.push({ fond: FONDS[4], sur: 'Hors affaire', grand: pc(b.horsAffaire, b.total), texte: b.horsAffaire ? `${jr(b.horsAffaire)} de gestion, formation, prospection…` : '100 % sur les affaires !' });
+      cartes.push({ fond: FONDS[5], sur: 'Merci pour cette année', grand: '🙌', texte: `Rendez-vous en juillet pour le bilan complet de l’exercice ${b.exercice}.` });
+      setWrapped(cartes);
+    } catch (e) { setErreur((e as Error).message); }
+  }
+
+  // ── Message de fin de semaine (vendredi → dimanche, mois en cours, sa propre saisie) ──
+  const finDeSemaine = (() => {
+    const auj = aujourdhuiParis();
+    if (!data || prenom || data.vueAdmin || auj.slice(0, 7) !== ym || ![5, 6, 0].includes(dow(auj))) return null;
+    const lundi = lundiDe(auj);
+    let reste = 0;
+    for (let n = 0; n < 5; n++) {
+      const d = addDays(lundi, n);
+      if (d.slice(0, 7) !== ym) continue;
+      for (const c of CRENEAUX) if (estActif(d, c) && !creneaux.get(k(d, c))?.affaireId) reste++;
+    }
+    return { reste };
+  })();
+
   const statutClasse = data ? { 'A compléter': 'brouillon', 'En attente de validation': 'attente', 'Validée': 'valide', 'Refusée': 'refuse' }[data.statut] : '';
 
   return (
@@ -546,6 +613,10 @@ export default function Saisie({ prenom }: { prenom?: string }) {
 
       {data && !chargement && (
         <MonMois data={data} affParId={affParId} couleur={couleur}
+          actions={<>
+            <button className="wr-bouton" onClick={() => setWrapped(cartesMois())}>▶ {prenom ? 'Son' : 'Mon'} mois en bref</button>
+            <button className="wr-bouton" onClick={ouvrirAnnee}>▶ {prenom ? 'Son' : 'Mon'} année {exerciceDe(aujourdhuiParis())}</button>
+          </>}
           titre={prenom ? `Le mois ${/^[aeiouyhàâéèêëîïôöûü]/i.test(data.collab.prenom) ? 'd’' : 'de '}${data.collab.prenom}` : 'Mon mois'}
           onAller={(date, c) => {
           aller({ vue: 'liste' });
@@ -555,6 +626,7 @@ export default function Saisie({ prenom }: { prenom?: string }) {
 
       {data && (
         <div className="bandeaux">
+          {finDeSemaine && <div className={`bandeau ${finDeSemaine.reste ? 'info' : 'ok'}`}>{finDeSemaine.reste ? <>Bientôt le week-end : encore <strong>{finDeSemaine.reste} créneau{finDeSemaine.reste > 1 ? 'x' : ''}</strong> à remplir cette semaine.</> : <>Semaine complète, bon week-end{data.collab.prenom ? ` ${data.collab.prenom}` : ''} ! 🌴</>}</div>}
           {!data.vueAdmin && data.modifieApresEnvoi && <div className="bandeau warn"><strong>Temps modifié après l&apos;envoi pour validation.</strong> N&apos;oublie pas de soumettre à nouveau ton temps de travail.</div>}
           {!data.vueAdmin && data.statut === 'En attente de validation' && <div className="bandeau info">Mois envoyé pour validation. Tu peux encore le modifier tant qu&apos;il n&apos;est pas validé : il faudra alors le soumettre à nouveau.</div>}
           {data.statut === 'Refusée' && data.motifRefus && <div className="bandeau err"><strong>Mois refusé.</strong> {data.motifRefus} — corrige ta saisie puis soumets de nouveau.</div>}
@@ -656,6 +728,7 @@ export default function Saisie({ prenom }: { prenom?: string }) {
         );
       })()}
       {panneau === 'refus' && <Refus onFermer={() => setPanneau(null)} onValider={m => workflow('refuser', m)} />}
+      {wrapped && <Wrapped cartes={wrapped} onFermer={() => setWrapped(null)} />}
       {panneau === 'commentaires' && <Commentaires ym={ym} prenom={prenom} onFermer={() => setPanneau(null)} onAller={m => { setPanneau(null); aller({ ym: m }); }} />}
 
       {selecteur && (
