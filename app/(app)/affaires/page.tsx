@@ -1,7 +1,7 @@
 'use client';
 // « Mes affaires » : affaires dont je suis Chef·fe de projet (CDP) ou Manager
 // dans Airtable, réparties en cours / terminées selon « Etat interne ».
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import type { AffaireLite, AffaireMienne } from '@/lib/types';
@@ -12,6 +12,34 @@ const nb = (v: number) => String(Math.round(v * 10) / 10).replace('.', ',');
 // États proposés (options de « Etat interne »), dans l'ordre de vie d'une affaire.
 const ETATS = ['AO', 'Etude', 'Chantier', 'En Cours', 'Livré', 'Terminé', 'Annulé', 'Interrompu'];
 const eur = (v: number | null | undefined) => (v == null ? '—' : Math.round(v).toLocaleString('fr-FR') + ' €');
+
+// Teinte de la pastille d'état : actif (indigo), chantier (vert), AO (ambre), clos (gris).
+function classeEtat(etat: string): string {
+  if (etat === 'Chantier') return 'etat-chantier';
+  if (etat === 'AO') return 'etat-ao';
+  if (['Etude', 'En Cours'].includes(etat)) return 'etat-actif';
+  return 'etat-clos';
+}
+
+// Menu « ⋯ » d'une ligne : se ferme au clic à l'extérieur ou sur Échap.
+function MenuLigne({ children }: { children: React.ReactNode }) {
+  const [ouvert, setOuvert] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!ouvert) return;
+    const f = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOuvert(false); };
+    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') setOuvert(false); };
+    document.addEventListener('mousedown', f);
+    document.addEventListener('keydown', k);
+    return () => { document.removeEventListener('mousedown', f); document.removeEventListener('keydown', k); };
+  }, [ouvert]);
+  return (
+    <div className="ma-menu" ref={ref}>
+      <button className="ma-plus" aria-label="Plus d’actions" aria-expanded={ouvert} onClick={() => setOuvert(o => !o)}>⋯</button>
+      {ouvert && <div className="ma-menu-liste" onClick={() => setOuvert(false)}>{children}</div>}
+    </div>
+  );
+}
 
 function MesAffaires() {
   const params = useSearchParams();
@@ -43,10 +71,15 @@ function MesAffaires() {
     } catch (e) { setErr((e as Error).message); } finally { setEnCours(null); }
   }
 
+  const nbEnCours = (d?.mes || []).filter(a => !a.clos).length;
+  const nbTerminees = (d?.mes || []).filter(a => a.clos).length;
+  const totalJours = (d?.mes || []).reduce((s, a) => s + a.joursExercice, 0);
 
   const liste = useMemo(() => (d?.mes || [])
     .filter(a => (vue === 'terminees' ? a.clos : !a.clos))
-    .filter(a => !q || `${a.code} ${a.nom}`.toLowerCase().includes(q.toLowerCase())), [d, vue, q]);
+    .filter(a => !q || `${a.code} ${a.nom}`.toLowerCase().includes(q.toLowerCase()))
+    .sort((a, b) => b.joursExercice - a.joursExercice || a.code.localeCompare(b.code, 'fr')), [d, vue, q]);
+  const maxJours = Math.max(1, ...liste.map(a => a.joursExercice));
 
   // Une couleur distincte par affaire affichée (la plus travaillée en premier), comme dans la saisie.
   const couleurs = useMemo(() => couleursDuMois(
@@ -55,54 +88,72 @@ function MesAffaires() {
   ), [liste]);
 
   return (
-    <div>
-      <h1>Mes affaires</h1>
-      <div className="onglets">
-        <Link className={vue === 'en-cours' ? 'actif' : ''} href="/affaires?vue=en-cours" replace>En cours</Link>
-        <Link className={vue === 'terminees' ? 'actif' : ''} href="/affaires?vue=terminees" replace>Terminées</Link>
-      </div>
-      <p className="discret">Affaires dont tu es Chef·fe de projet ou Manager dans Airtable. « Terminées » : état Terminé, Annulé, Interrompu ou Livré.</p>
-      <div className="affaires-barre">
-        <input className="recherche" value={q} onChange={e => setQ(e.target.value)} placeholder="Rechercher…" />
+    <div className="mes-affaires">
+      <div className="ma-tete">
+        <h1>Mes affaires</h1>
+        {d && <span className="discret">{nbEnCours} en cours · {nb(totalJours)} j saisis en {d.exercice}</span>}
         <button className="btn btn-pri" disabled={!d} onClick={() => setAjout(true)}>+ Ajouter une affaire</button>
+      </div>
+      <div className="onglets ma-onglets">
+        <Link className={vue === 'en-cours' ? 'actif' : ''} href="/affaires?vue=en-cours" replace>En cours {d && <span className="ma-compte">{nbEnCours}</span>}</Link>
+        <Link className={vue === 'terminees' ? 'actif' : ''} href="/affaires?vue=terminees" replace>Terminées {d && <span className="ma-compte">{nbTerminees}</span>}</Link>
+        <input className="recherche ma-recherche" value={q} onChange={e => setQ(e.target.value)} placeholder="Rechercher…" title="Affaires dont tu es Chef·fe de projet ou Manager dans Airtable" />
       </div>
       {err && <div className="bandeau err">{err}</div>}
       {info && <div className="bandeau ok">{info} <button className="lien" onClick={() => setInfo(null)}>fermer</button></div>}
       {!d && !err && <div className="chargement">Chargement…</div>}
       {d && (
-        <div className="tableau-wrap">
-          <table className="tableau">
-            <thead><tr>
-              <th>Code</th><th>Affaire</th><th>Pôle</th><th>État</th><th>Rôle</th><th className="num">Mes jours {d.exercice}</th>
-              {d.balanceVisible && <><th className="num">Rentabilité globale</th></>}
-              <th></th>
-            </tr></thead>
-            <tbody>
-              {liste.map(a => (
-                <tr key={a.id}>
-                  <td className="nom"><span className="pastille" style={{ background: couleurs.get(a.id) ?? couleurAffaire(a) }} /> {a.code}</td>
-                  <td>{a.nom}</td><td>{a.pole || '—'}</td>
-                  <td>{a.gerable
-                    ? <select className="etat-select" value={a.etat} disabled={enCours === a.id} onChange={e => agir(a.id, { action: 'etat', etat: e.target.value }, `${a.code} : état passé à « ${e.target.value} ».`)}>
+        <div className={`ma-carte ${d.balanceVisible ? 'avec-renta' : ''}`}>
+          <div className="ma-ligne ma-entete">
+            <span>Affaire</span><span>État</span><span>Mes jours {d.exercice}</span>
+            {d.balanceVisible && <span className="num">Rentabilité</span>}
+            <span />
+          </div>
+          {liste.map(a => {
+            const clos = vue === 'terminees';
+            const cdp = a.role.includes('Chef·fe de projet');
+            return (
+              <div className={`ma-ligne ${clos ? 'close' : ''}`} key={a.id}>
+                <div className="ma-affaire">
+                  <div>
+                    <span className="pastille" style={{ background: clos ? '#9CA3AF' : (couleurs.get(a.id) ?? couleurAffaire(a)) }} />
+                    <span className="ma-code">{a.code}</span>
+                    {a.pole && <span className="ma-etiquette">{a.pole}</span>}
+                    {cdp && <span className="ma-etiquette" title="Chef·fe de projet">CDP</span>}
+                    {a.role.includes('Manager') && <span className="ma-etiquette">Manager</span>}
+                  </div>
+                  <div className="ma-nom" title={a.nom}>{a.nom}</div>
+                </div>
+                <div>
+                  {a.gerable
+                    ? <select className={`etat-pastille ${classeEtat(a.etat)}`} value={a.etat} disabled={enCours === a.id} aria-label={`État de ${a.code}`}
+                        onChange={e => agir(a.id, { action: 'etat', etat: e.target.value }, `${a.code} : état passé à « ${e.target.value} ».`)}>
                         {!ETATS.includes(a.etat) && <option value={a.etat}>{a.etat || '—'}</option>}
                         {ETATS.map(x => <option key={x} value={x}>{x}</option>)}
                       </select>
-                    : (a.etat || '—')}</td>
-                  <td>{a.role}</td>
-                  <td className="num">{nb(a.joursExercice)} j</td>
-                  {d.balanceVisible && <>
-                    <td className="num">{eur(a.balance)}</td>
-                  </>}
-                  <td className="affaire-actions">
-                    {vue === 'terminees' && a.gerable && <button className="lien" disabled={enCours === a.id} onClick={() => agir(a.id, { action: 'etat', etat: 'En Cours' }, `${a.code} rouverte : elle repasse dans « En cours ».`)}>Rouvrir</button>}
-                    {vue === 'en-cours' && <Link href="/saisie">Saisir</Link>}
-                    {a.role.includes('Chef·fe de projet') && <button className="lien discret-lien" disabled={enCours === a.id} onClick={() => { if (confirm(`Te retirer des Chef·fe·s de projet de ${a.code} ? Les autres CDP de l’affaire sont conservés.`)) agir(a.id, { action: 'cdp', ajouter: false }, `Tu n’es plus Chef·fe de projet de ${a.code} : l’affaire est retirée de tes affaires.`); }}>Me retirer des CDP</button>}
-                  </td>
-                </tr>
-              ))}
-              {!liste.length && <tr><td colSpan={9} className="discret">Aucune affaire.</td></tr>}
-            </tbody>
-          </table>
+                    : <span className={`etat-pastille ${classeEtat(a.etat)}`}>{a.etat || '—'}</span>}
+                </div>
+                <div className="ma-jours">
+                  <div>{nb(a.joursExercice)} j</div>
+                  <div className="ma-barre"><span style={{ width: `${(100 * a.joursExercice) / maxJours}%` }} /></div>
+                </div>
+                {d.balanceVisible && <span className="num">{eur(a.balance)}</span>}
+                <div className="ma-actions">
+                  {clos
+                    ? (a.gerable && <button className="btn btn-sec btn-sm ma-action" disabled={enCours === a.id} onClick={() => agir(a.id, { action: 'etat', etat: 'En Cours' }, `${a.code} rouverte : elle repasse dans « En cours ».`)}>Rouvrir</button>)
+                    : <Link className="btn btn-sec btn-sm ma-action" href="/saisie">Saisir</Link>}
+                  {cdp && (
+                    <MenuLigne>
+                      <button disabled={enCours === a.id} onClick={() => { if (confirm(`Te retirer des Chef·fe·s de projet de ${a.code} ? Les autres CDP de l’affaire sont conservés.`)) agir(a.id, { action: 'cdp', ajouter: false }, `Tu n’es plus Chef·fe de projet de ${a.code} : l’affaire est retirée de tes affaires.`); }}>
+                        Me retirer des CDP
+                      </button>
+                    </MenuLigne>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+          {!liste.length && <div className="ma-vide">{q ? 'Aucune affaire ne correspond à la recherche.' : clos0(vue)}</div>}
         </div>
       )}
       {ajout && d && (
@@ -113,6 +164,8 @@ function MesAffaires() {
     </div>
   );
 }
+
+const clos0 = (vue: string) => (vue === 'terminees' ? 'Aucune affaire terminée.' : 'Aucune affaire en cours : ajoute-toi sur une affaire avec « + Ajouter une affaire ».');
 
 export default function PageAffaires() {
   return <Suspense fallback={<div className="chargement">Chargement…</div>}><MesAffaires /></Suspense>;
