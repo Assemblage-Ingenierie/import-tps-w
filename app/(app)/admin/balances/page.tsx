@@ -3,9 +3,13 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import type { LigneBalance } from '@/lib/types';
 import FiltreMulti from '@/components/FiltreMulti';
+import { classeEtat } from '@/components/couleurs';
 
 const nb = (v: number) => String(Math.round(v * 10) / 10).replace('.', ',');
 const eur = (v: number | null) => (v == null ? '—' : Math.round(v).toLocaleString('fr-FR') + ' €');
+// Rentabilité : rouge si négative.
+const Renta = ({ v }: { v: number | null }) => <span className={v != null && v < 0 ? 'bal-neg' : v == null ? 'bal-vide' : ''}>{eur(v)}</span>;
+const joursDe = (l: LigneBalance) => l.parCollab.reduce((s, p) => s + p.jours, 0);
 
 // Filtres mémorisés dans ce navigateur.
 type Filtres = { pole: Set<string>; etat: Set<string>; cdp: Set<string> };
@@ -50,6 +54,8 @@ export default function PageBalances() {
     .filter(l => !filtres.cdp.size || l.cdp.some(c => filtres.cdp.has(c)))
     .sort((a, b) => (a.rentaGlobale ?? Infinity) - (b.rentaGlobale ?? Infinity)), [d, q, filtres]);
 
+  const maxJours = Math.max(1, ...lignes.map(joursDe));
+
   const actifs = filtres.pole.size + filtres.etat.size + filtres.cdp.size > 0 || !!q;
 
   return (
@@ -67,30 +73,53 @@ export default function PageBalances() {
           {actifs && <button className="lien" onClick={() => { setQ(''); changer('pole', new Set()); setFiltres(vide()); try { localStorage.removeItem(CLE); } catch { /* */ } }}>Réinitialiser</button>}
           <span className="discret filtres-nb">{lignes.length} affaire{lignes.length > 1 ? 's' : ''}</span>
         </div>
-        <div className="tableau-wrap">
-          <table className="tableau">
-            <thead><tr><th>Code</th><th>Affaire</th><th>Pôle</th><th>État</th><th>CDP</th><th className="num">Marché PI</th><th className="num">{d.libelles.globale}</th><th className="num">{d.libelles.exercice}</th><th className="num" title="Temps saisi sur l'affaire depuis le début de l'exercice, tous collaborateurs confondus">Temps saisi {d.exercice}</th></tr></thead>
+        <div className="tableau-wrap bal-carte">
+          <table className="tableau bal-tableau">
+            <thead><tr>
+              <th>Affaire</th><th>État</th><th>CDP</th><th className="num">Marché PI</th>
+              <th className="num">{d.libelles.globale}</th><th className="num">{d.libelles.exercice}</th>
+              <th className="num" title="Temps saisi sur l'affaire depuis le début de l'exercice, tous collaborateurs confondus">Temps saisi {d.exercice}</th>
+            </tr></thead>
             <tbody>
-              {lignes.map(l => (
-                <Fragment key={l.id}>
-                  <tr className="cliquable" onClick={() => setOuvert(o => (o === l.id ? null : l.id))}>
-                    <td className="nom"><span className="chevron-ligne">{l.parCollab.length ? (ouvert === l.id ? '▾' : '▸') : ''}</span>{l.code}</td><td>{l.nom}</td><td>{l.pole}</td><td>{l.etat || '—'}</td>
-                    <td className="discret">{l.cdp.join(', ') || '—'}</td>
-                    <td className="num">{eur(l.marchePI)}</td>
-                    <td className="num">{eur(l.rentaGlobale)}</td>
-                    <td className="num">{eur(l.rentaExercice)}</td>
-                    <td className="num">{nb(l.parCollab.reduce((s, p) => s + p.jours, 0))} j</td>
-                  </tr>
-                  {ouvert === l.id && l.parCollab.map(p => (
-                    <tr key={l.id + p.prenom} className="sous-ligne">
-                      <td></td><td colSpan={4}>{p.prenom}{p.cout != null && <span className="discret"> · {eur(p.cout)}/j</span>}</td>
-                      <td></td><td></td><td></td>
-                      <td className="num">{nb(p.jours)} j</td>
+              {lignes.map(l => {
+                const j = joursDe(l);
+                const deplie = ouvert === l.id;
+                const maxCollab = Math.max(1, ...l.parCollab.map(p => p.jours));
+                return (
+                  <Fragment key={l.id}>
+                    <tr className={`${l.parCollab.length ? 'cliquable' : ''} ${deplie ? 'deplie' : ''}`} onClick={() => l.parCollab.length && setOuvert(o => (o === l.id ? null : l.id))}
+                      aria-expanded={l.parCollab.length ? deplie : undefined}>
+                      <td className="bal-affaire">
+                        <div>
+                          <span className={`bal-chevron ${deplie ? 'ouvert' : ''}`} aria-hidden="true">{l.parCollab.length ? '›' : ''}</span>
+                          <span className="ma-code">{l.code}</span>
+                          {l.pole && <span className="ma-etiquette">{l.pole}</span>}
+                        </div>
+                        <div className="ma-nom" title={l.nom}>{l.nom}</div>
+                      </td>
+                      <td><span className={`etat-pastille ${classeEtat(l.etat)}`}>{l.etat || '—'}</span></td>
+                      <td className="bal-cdp">{l.cdp.length ? l.cdp.map(c => <span key={c} className="ma-etiquette">{c}</span>) : <span className="bal-vide">—</span>}</td>
+                      <td className="num">{eur(l.marchePI)}</td>
+                      <td className="num"><Renta v={l.rentaGlobale} /></td>
+                      <td className="num"><Renta v={l.rentaExercice} /></td>
+                      <td className="num bal-jours">
+                        <div>{nb(j)} j</div>
+                        <div className="ma-barre"><span style={{ width: `${(100 * j) / maxJours}%` }} /></div>
+                      </td>
                     </tr>
-                  ))}
-                </Fragment>
-              ))}
-              {!lignes.length && <tr><td colSpan={9} className="discret">Aucune affaire ne correspond aux filtres.</td></tr>}
+                    {deplie && l.parCollab.map(p => (
+                      <tr key={l.id + p.prenom} className="sous-ligne">
+                        <td className="bal-collab" colSpan={6}>{p.prenom}{p.cout != null && <span className="discret"> · {eur(p.cout)}/j</span>}</td>
+                        <td className="num bal-jours">
+                          <div>{nb(p.jours)} j</div>
+                          <div className="ma-barre"><span style={{ width: `${(100 * p.jours) / maxCollab}%` }} /></div>
+                        </td>
+                      </tr>
+                    ))}
+                  </Fragment>
+                );
+              })}
+              {!lignes.length && <tr><td colSpan={7} className="ma-vide">Aucune affaire ne correspond aux filtres.</td></tr>}
             </tbody>
           </table>
         </div>

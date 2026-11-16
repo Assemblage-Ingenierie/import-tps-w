@@ -6,20 +6,12 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import type { AffaireLite, AffaireMienne } from '@/lib/types';
 import SelecteurAffaire from '@/components/SelecteurAffaire';
-import { couleurAffaire, couleursDuMois } from '@/components/couleurs';
+import { classeEtat, couleurAffaire, couleursDuMois } from '@/components/couleurs';
 
 const nb = (v: number) => String(Math.round(v * 10) / 10).replace('.', ',');
 // États proposés (options de « Etat interne »), dans l'ordre de vie d'une affaire.
 const ETATS = ['AO', 'Etude', 'Chantier', 'En Cours', 'Livré', 'Terminé', 'Annulé', 'Interrompu'];
 const eur = (v: number | null | undefined) => (v == null ? '—' : Math.round(v).toLocaleString('fr-FR') + ' €');
-
-// Teinte de la pastille d'état : actif (indigo), chantier (vert), AO (ambre), clos (gris).
-function classeEtat(etat: string): string {
-  if (etat === 'Chantier') return 'etat-chantier';
-  if (etat === 'AO') return 'etat-ao';
-  if (['Etude', 'En Cours'].includes(etat)) return 'etat-actif';
-  return 'etat-clos';
-}
 
 // Menu « ⋯ » d'une ligne : se ferme au clic à l'extérieur ou sur Échap.
 function MenuLigne({ children }: { children: React.ReactNode }) {

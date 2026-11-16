@@ -21,3 +21,11 @@ export function couleursDuMois(joursParAffaire: Map<string, number>, affaires: M
   ordre.forEach(([id], i) => m.set(id, PALETTE[i % PALETTE.length]));
   return m;
 }
+
+// Teinte de la pastille d'état : actif (indigo), chantier (vert), AO (ambre), clos (gris).
+export function classeEtat(etat: string): string {
+  if (etat === 'Chantier') return 'etat-chantier';
+  if (etat === 'AO') return 'etat-ao';
+  if (['Etude', 'En Cours'].includes(etat)) return 'etat-actif';
+  return 'etat-clos';
+}
