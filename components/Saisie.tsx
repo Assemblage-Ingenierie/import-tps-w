@@ -46,6 +46,7 @@ export default function Saisie({ prenom }: { prenom?: string }) {
   const [data, setData] = useState<DonneesMois | null>(null);
   const [affaires, setAffaires] = useState<AffaireLite[]>([]);
   const [mesIds, setMesIds] = useState<Set<string>>(new Set());
+  const [joursMes, setJoursMes] = useState<Map<string, number>>(new Map());
   const [chargement, setChargement] = useState(true);
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -94,8 +95,8 @@ export default function Saisie({ prenom }: { prenom?: string }) {
   useEffect(() => { if (params.get('commentaires') === '1') setPanneau('commentaires'); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     setRecentes(lireRecentes());
-    appel<{ affaires: AffaireLite[]; mes: AffaireLite[] }>(`/api/affaires?mes=1${qPrenom}`)
-      .then(d => { setAffaires(d.affaires); setMesIds(new Set(d.mes.map(a => a.id))); })
+    appel<{ affaires: AffaireLite[]; mes: (AffaireLite & { joursExercice: number })[] }>(`/api/affaires?mes=1${qPrenom}`)
+      .then(d => { setAffaires(d.affaires); setMesIds(new Set(d.mes.map(a => a.id))); setJoursMes(new Map(d.mes.map(a => [a.id, a.joursExercice]))); })
       .catch(() => appel<{ affaires: AffaireLite[] }>('/api/affaires').then(d => setAffaires(d.affaires)).catch(() => undefined));
   }, [qPrenom]);
 
@@ -733,6 +734,8 @@ export default function Saisie({ prenom }: { prenom?: string }) {
 
       {selecteur && (
         <SelecteurAffaire affaires={affaires} mesIds={mesIds} recentes={recentes} nbCreneaux={selecteur.length}
+          jours={joursMes} couleur={couleur}
+          contexte={selecteur.length === 1 ? (() => { const [dt, c] = selecteur[0].split('|') as [string, Creneau]; return `${new Date(dt + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })} · ${LIB[c].toLowerCase()}`; })() : `${selecteur.length} créneaux`}
           onChoisir={choisir} onFermer={() => { setSelecteur(null); setSelecteurPanneau(false); }} />
       )}
 

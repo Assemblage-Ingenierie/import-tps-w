@@ -570,3 +570,26 @@ span.etat-pastille { padding-right: 11px; background-image: none; cursor: defaul
   .ma-actions { grid-column: 2; grid-row: 1 / span 2; }
   .ma-recherche { max-width: 140px; }
 }
+
+/* ════════ Sélecteur d'affaire (design « Mes affaires ») ════════ */
+.selecteur { max-width: 560px; }
+.sel-tete2 { padding: 12px 14px 0; border-bottom: 1px solid var(--gris); }
+.sel-recherche { display: flex; align-items: center; gap: 8px; border: 1.5px solid #A5B4FC; border-radius: 10px; padding: 0 10px; color: #9CA3AF; }
+.sel-recherche input { flex: 1; border: none; outline: none; padding: 9px 0; font-size: 14px; background: transparent; }
+.sel-onglets { display: flex; gap: 16px; align-items: center; margin-top: 8px; }
+.sel-onglets button { display: inline-flex; align-items: center; gap: 6px; padding: 8px 1px; color: var(--noir70); font-weight: 600; font-size: 13px; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.sel-onglets button.actif { color: var(--rouge); border-bottom-color: var(--rouge); }
+.sel-onglets button.actif .ma-compte { background: var(--rouge-clair); color: var(--rouge-fonce); }
+.sel-contexte { margin-left: auto; font-size: 11.5px; color: #9CA3AF; white-space: nowrap; }
+.sel-section { text-transform: none; letter-spacing: 0; font-size: 11px; color: #9CA3AF; font-weight: 600; }
+.sel-option { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; width: 100%; padding: 7px 10px; border-radius: 8px; text-align: left; }
+.sel-option.actif { background: var(--rouge-clair); }
+.sel-affaire { display: flex; flex-direction: column; min-width: 0; }
+.sel-affaire .pastille { margin-right: 8px; }
+.sel-code { font-weight: 600; }
+.sel-option.clos .sel-code { color: var(--noir70); }
+.sel-nom { color: var(--noir70); font-size: 12px; margin-top: 1px; padding-left: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sel-droite { display: flex; align-items: center; gap: 8px; }
+.sel-jours { color: #9CA3AF; font-size: 11.5px; white-space: nowrap; }
+.sel-option .etat-pastille { cursor: pointer; padding: 2px 9px; font-size: 11.5px; }
+@media (max-width: 600px) { .sel-contexte { display: none; } .sel-jours { display: none; } }
