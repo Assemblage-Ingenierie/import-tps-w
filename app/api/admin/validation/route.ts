@@ -4,6 +4,7 @@ import { exigerAdmin, gerer, json, ErreurHttp } from '@/lib/auth';
 import { estMoisValide, exerciceDe, joursDuMois, estOuvre } from '@/lib/dates';
 import { fiches, affairesParId } from '@/lib/referentiels';
 import { saisiesDeTousLeMois, type Saisie } from '@/lib/temps';
+import { MOIS_OUVERTURE } from '@/lib/config';
 import { statutsDuMois, cleMois, validerEnLot, commentairesDuMois } from '@/lib/mois';
 import { chargerAbsences, absencesDe } from '@/lib/payfit';
 import type { LigneValidation, Creneau } from '@/lib/types';
@@ -42,7 +43,7 @@ export async function GET(req: Request) {
       const dernier = cs[cs.length - 1];
       return {
         cle: f.cle, prenom: f.prenom, nom, ficheId: f.id, email,
-        statut: st?.statut || 'A compléter', soumisLe: st?.soumisLe || null,
+        statut: st?.statut || (ym < MOIS_OUVERTURE ? 'Validée' : 'A compléter'), soumisLe: st?.soumisLe || null,
         attendus, couverts, conflits,
         clotureesMaintenues: siennes.filter(s => s.confirmClot || (!!s.affaireId && !!affaires.get(s.affaireId)?.clos)).length,
         nonOuvresConfirmes: siennes.filter(s => s.confirmNonOuvre).length,

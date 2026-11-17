@@ -4,8 +4,16 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'Carnet — Assemblage ingénierie',
   robots: { index: false, follow: false },
+  applicationName: "Carnet",
+  // Ajout à l'écran d'accueil (iPhone) : plein écran, barre d'état claire.
+  appleWebApp: { capable: true, title: "Carnet", statusBarStyle: "default" },
+  formatDetection: { telephone: false },
 };
-export const viewport: Viewport = { width: 'device-width', initialScale: 1 };
+// Téléphone : zoom bloqué (pincement et double-tap), comme une application.
+export const viewport: Viewport = {
+  width: 'device-width', initialScale: 1, maximumScale: 1, userScalable: false,
+  viewportFit: 'cover', themeColor: '#FFFFFF',
+};
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 
 export default function PageParametres() {
-  const [d, setD] = useState<{ balanceVisibleUsers: boolean; admins: string[]; env: string } | null>(null);
+  const [d, setD] = useState<{ balanceVisibleUsers: boolean; facturationVisibleUsers: boolean; admins: string[]; env: string } | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [enCours, setEnCours] = useState(false);
 
@@ -10,13 +10,13 @@ export default function PageParametres() {
     fetch('/api/admin/parametres').then(async r => { const j = await r.json(); if (!r.ok) throw new Error(j.erreur); setD(j); }).catch(e => setErr(e.message));
   }, []);
 
-  async function basculer(v: boolean) {
+  async function basculer(cle: 'balanceVisibleUsers' | 'facturationVisibleUsers', v: boolean) {
     setEnCours(true); setErr(null);
     try {
-      const r = await fetch('/api/admin/parametres', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ balanceVisibleUsers: v }) });
+      const r = await fetch('/api/admin/parametres', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ [cle]: v }) });
       const j = await r.json();
       if (!r.ok) throw new Error(j.erreur);
-      setD(x => (x ? { ...x, balanceVisibleUsers: j.balanceVisibleUsers } : x));
+      setD(x => (x ? { ...x, [cle]: j[cle] } : x));
     } catch (e) { setErr((e as Error).message); } finally { setEnCours(false); }
   }
 
@@ -28,9 +28,16 @@ export default function PageParametres() {
       {d && <>
         <div className="carte">
           <label className="interrupteur">
-            <input type="checkbox" checked={d.balanceVisibleUsers} disabled={enCours} onChange={e => basculer(e.target.checked)} />
+            <input type="checkbox" checked={d.balanceVisibleUsers} disabled={enCours} onChange={e => basculer('balanceVisibleUsers', e.target.checked)} />
             <span><strong>Balance visible par les Users</strong><br />
               <small>Désactivé par défaut. Tant qu&apos;il est désactivé, aucune donnée de balance n&apos;est envoyée au navigateur d&apos;un User. Activé, chaque User voit la balance de ses affaires dans « Mes affaires ».</small></span>
+          </label>
+        </div>
+        <div className="carte">
+          <label className="interrupteur">
+            <input type="checkbox" checked={d.facturationVisibleUsers} disabled={enCours} onChange={e => basculer('facturationVisibleUsers', e.target.checked)} />
+            <span><strong>% de facturation visible par les Users</strong><br />
+              <small>Désactivé par défaut. Activé, chaque User voit dans « Mes affaires en cours » le pourcentage facturé de ses affaires (formule Airtable « % Facturé »). Les Admins le voient toujours.</small></span>
           </label>
         </div>
         <div className="carte">

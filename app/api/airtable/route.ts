@@ -3,7 +3,20 @@
 import { NextResponse } from 'next/server';
 import { exigerAdmin, gerer, json } from '@/lib/auth';
 import { brut } from '@/lib/airtable';
-import { BASE_ID } from '@/lib/config';
+import { BASE_ID, TEMPS, MOIS_OUVERTURE, envCourant } from '@/lib/config';
+
+// Une fois Carnet branché sur Tps W, les mois saisis dans l'application
+// (depuis MOIS_OUVERTURE) ne doivent plus être importés depuis Payfit :
+// sinon chaque créneau existerait en double.
+function importInterdit(table: string, corps: string): string | null {
+  if (envCourant() !== 'production' || table !== TEMPS.production.table) return null;
+  try {
+    const recs = (JSON.parse(corps).records || []) as { fields?: Record<string, unknown> }[];
+    const jour = TEMPS.production.f.jour;
+    const n = recs.filter(r => String(r.fields?.[jour] ?? r.fields?.Jour ?? '') >= `${MOIS_OUVERTURE}-01`).length;
+    return n ? `${n} saisie(s) à partir de novembre 2026 : ces mois sont saisis dans Carnet, l'import Payfit est désactivé pour eux.` : null;
+  } catch { return null; }
+}
 
 async function relayer(req: Request) {
   return gerer(async () => {
@@ -17,6 +30,8 @@ async function relayer(req: Request) {
     const init: RequestInit = { method: req.method };
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       init.body = await req.text();
+      const refus = importInterdit(table, init.body as string);
+      if (refus) return json({ erreur: refus, error: { message: refus } }, 409);
       init.headers = { 'Content-Type': 'application/json' };
     }
     const r = await brut(`${chemin}${url.search}`, init);

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import type { AffaireLite, AffaireMienne } from '@/lib/types';
 import SelecteurAffaire from '@/components/SelecteurAffaire';
+import CreerAffaire from '@/components/CreerAffaire';
 import { classeEtat, couleurAffaire, couleursDuMois } from '@/components/couleurs';
 
 const nb = (v: number) => String(Math.round(v * 10) / 10).replace('.', ',');
@@ -36,11 +37,12 @@ function MenuLigne({ children }: { children: React.ReactNode }) {
 function MesAffaires() {
   const params = useSearchParams();
   const vue = params.get('vue') === 'terminees' ? 'terminees' : 'en-cours';
-  const [d, setD] = useState<{ mes: AffaireMienne[]; affaires: AffaireLite[]; exercice: string; balanceVisible: boolean } | null>(null);
+  const [d, setD] = useState<{ mes: AffaireMienne[]; affaires: AffaireLite[]; exercice: string; balanceVisible: boolean; facturationVisible: boolean; moi: string } | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [q, setQ] = useState('');
   const [ajout, setAjout] = useState(false);
+  const [creation, setCreation] = useState(false);
   const [enCours, setEnCours] = useState<string | null>(null);
 
   const charger = (frais = false) =>
@@ -72,6 +74,8 @@ function MesAffaires() {
     .filter(a => !q || `${a.code} ${a.nom}`.toLowerCase().includes(q.toLowerCase()))
     .sort((a, b) => b.joursExercice - a.joursExercice || a.code.localeCompare(b.code, 'fr')), [d, vue, q]);
   const maxJours = Math.max(1, ...liste.map(a => a.joursExercice));
+  // % de facturation : seulement dans « En cours », si le paramètre Admin l'autorise.
+  const fact = !!d?.facturationVisible && vue === 'en-cours';
 
   // Une couleur distincte par affaire affichée (la plus travaillée en premier), comme dans la saisie.
   const couleurs = useMemo(() => couleursDuMois(
@@ -84,7 +88,10 @@ function MesAffaires() {
       <div className="ma-tete">
         <h1>Mes affaires</h1>
         {d && <span className="discret">{nbEnCours} en cours · {nb(totalJours)} j saisis en {d.exercice}</span>}
-        <button className="btn btn-pri" disabled={!d} onClick={() => setAjout(true)}>+ Ajouter une affaire</button>
+        <div className="ma-boutons">
+          <button className="btn btn-pri" disabled={!d} onClick={() => setAjout(true)}>+ M&apos;ajouter en CDP</button>
+          <button className="btn btn-sec" disabled={!d} onClick={() => setCreation(true)}>Créer une affaire</button>
+        </div>
       </div>
       <div className="onglets ma-onglets">
         <Link className={vue === 'en-cours' ? 'actif' : ''} href="/affaires?vue=en-cours" replace>En cours {d && <span className="ma-compte">{nbEnCours}</span>}</Link>
@@ -95,9 +102,10 @@ function MesAffaires() {
       {info && <div className="bandeau ok">{info} <button className="lien" onClick={() => setInfo(null)}>fermer</button></div>}
       {!d && !err && <div className="chargement">Chargement…</div>}
       {d && (
-        <div className={`ma-carte ${d.balanceVisible ? 'avec-renta' : ''}`}>
+        <div className={`ma-carte ${d.balanceVisible ? 'avec-renta' : ''}`} style={{ ['--cols' as string]: ['minmax(0, 1fr)', '120px', '120px', ...(fact ? ['110px'] : []), ...(d.balanceVisible ? ['100px'] : []), '150px'].join(' ') }}>
           <div className="ma-ligne ma-entete">
             <span>Affaire</span><span>État</span><span>Mes jours {d.exercice}</span>
+            {fact && <span className="num" title="Formule Airtable « % Facturé »">Facturé</span>}
             {d.balanceVisible && <span className="num">Rentabilité</span>}
             <span />
           </div>
@@ -129,6 +137,12 @@ function MesAffaires() {
                   <div>{nb(a.joursExercice)} j</div>
                   <div className="ma-barre"><span style={{ width: `${(100 * a.joursExercice) / maxJours}%` }} /></div>
                 </div>
+                {fact && (
+                  <div className="ma-fact" title="Part du marché déjà facturée (formule Airtable « % Facturé »)">
+                    <div>{a.facture == null ? '—' : `${Math.round(a.facture * 100)} %`}</div>
+                    <div className="ma-barre ma-barre-fact"><span style={{ width: `${Math.min(100, Math.max(0, (a.facture || 0) * 100))}%` }} /></div>
+                  </div>
+                )}
                 {d.balanceVisible && <span className="num">{eur(a.balance)}</span>}
                 <div className="ma-actions">
                   {clos
@@ -152,6 +166,10 @@ function MesAffaires() {
         <SelecteurAffaire modeAjout affaires={d.affaires.filter(a => !a.horsAffaire && !d.mes.some(m => m.id === a.id))} mesIds={new Set()} recentes={[]} nbCreneaux={0}
           onFermer={() => setAjout(false)}
           onChoisir={a => { setAjout(false); if (a) agir(a.id, { action: 'cdp', ajouter: true }, `Tu es maintenant Chef·fe de projet de ${a.code}.`); }} />
+      )}
+      {creation && d && (
+        <CreerAffaire moi={d.moi} onFermer={() => setCreation(false)}
+          onCree={async code => { setCreation(false); setErr(null); await charger(true); setInfo(`Affaire ${code} créée dans Airtable.`); }} />
       )}
     </div>
   );

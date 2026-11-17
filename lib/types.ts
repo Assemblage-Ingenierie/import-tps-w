@@ -80,6 +80,7 @@ export interface AffaireMienne extends AffaireLite {
   role: string;          // « Chef·fe de projet », « Manager »
   joursExercice: number; // mes jours saisis sur l'exercice en cours
   balance?: number | null;       // seulement si autorisé
+  facture?: number | null;       // % facturé (0 à 1), seulement si autorisé
 }
 
 export interface LigneValidation {

@@ -77,13 +77,13 @@ export const TEMPS: Record<Env, { table: string; f: ChampsTemps }> = {
       creneau: 'flduwfXxQrcETpZaB',
       linkCollab: 'fldxbwDTTZvXhbPtv',
       linkAffaire: 'fldl5Hmib4WzWKha0',
-      // À créer dans Tps W avant la bascule (cf. docs/conception-interface-user.md)
-      confClot: null,
-      confNonOuvre: null,
-      confAbsence: null,
-      confLe: null,
-      source: null,
-      saisiPar: null,
+      // Créés dans Tps W le 17/11/2026 pour la bascule de l'application.
+      confClot: 'fldDZXRLtlMmaMzCZ',
+      confNonOuvre: 'fldCeDJdkytp3Iew9',
+      confAbsence: 'fldkEi92oSyeJ6uYY',
+      confLe: 'fldhcEHWqrmd5UJPi',
+      source: 'fldPPBJD6ZrHgIISg',
+      saisiPar: 'fldN2HyyW86DcmAoQ',
     },
   },
 };
@@ -120,8 +120,36 @@ export const AFFAIRE = {
     // affiche telles quelles, sans les recalculer.
     rentaGlobale: 'fldzzOVKS1UYkX2g4',  // « Rentabilité Globale »
     rentaExercice: 'fldZqnjx4pyjv8LwC', // « Rentabilité 25/26 »
+    facture: 'fldvfNvs6Kv9nLUHw',       // « % Facturé » (formule, 0 à 1)
+    // Champs saisis à la création d'une affaire (fenêtre « Créer une affaire »).
+    codeMoa: 'fldn9itX7U4qVB9R5',       // « Code MOA/Pays »
+    codeAdresse: 'fld2LpajCphMKuO7Y',   // « Code Adresse/Projet »
+    contrat: 'fld3RTghxnE3TpiNZ',
+    architecte: 'flddXe8aXjrm93TRv',    // liens vers Sync CRM
+    moa: 'fld4hir1bk32yohwy',           // « Maître d'ouvrage »
+    bet: 'fldtlL72TQIAXBu1q',           // « BET associés »
+    entreprise: 'fldWsiJtKrOWyzRDr',
+    adresse: 'fldp5UtSsWF65ZgZ9',
+    progPrincipaux: 'fldKNKtsZNpvmf695',
+    progSecondaires: 'fldaTqKMNrIpeGBma',
+    materiaux: 'fldC4SW9n1H2PZ3MH',
+    rehabNeuf: 'fldyD7L9E7cGL26vH',
+    surface: 'fld9HmFcoH2XYpm6y',       // « Surface(m²) »
+    budgetHT: 'fldc9yGvzPAdhG6JR',
   },
 };
+
+// ── Sync CRM ─────────────────────────────────────────────────────────────
+// Table synchronisée depuis la base « CRM » : organisations (architectes,
+// maîtres d'ouvrage, BET, entreprises) liées aux affaires.
+export const CRM = {
+  table: 'tbldFyeiID6wEA0ET',
+  f: { nom: 'fldAgF3mTYqbAE103', role: 'fldus5VL4hBxcvmvd' },
+};
+
+// Mois antérieurs à l'ouverture de Carnet : déjà recensés dans Tps W (import
+// Payfit), considérés comme validés et non modifiables par les Users.
+export const MOIS_OUVERTURE = '2026-11';
 export const LIBELLE_RENTA_GLOBALE = 'Rentabilité globale';
 export const LIBELLE_RENTA_EXERCICE = 'Rentabilité 25/26';
 
@@ -153,6 +181,7 @@ export const VALIDATION = {
 
 // Clé de la ligne « Paramètre » dans la table AI Timesheet.
 export const PARAM_BALANCE_USERS = 'PARAMETRE|balance_visible_users';
+export const PARAM_FACTURATION_USERS = 'PARAMETRE|facturation_visible_users';
 
 // Noms de champs utilisés dans filterByFormula (Airtable n'accepte pas les IDs).
 export const NOMS = {
@@ -163,4 +192,5 @@ export const NOMS = {
   validationMois: 'Mois',
   validationEnv: 'Environnement',
   validationCommentaires: 'Commentaires',
+  affaireClef: 'Clef',
 };

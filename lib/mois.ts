@@ -1,6 +1,6 @@
 // Le mois de saisie d'un collaborateur : assemblage des saisies, des absences
 // Payfit et des jours fériés ; statut de validation ; commentaires ; règles.
-import { VALIDATION, PARAM_BALANCE_USERS, NOMS, envCourant, LIBELLE_ENV } from './config';
+import { VALIDATION, PARAM_BALANCE_USERS, PARAM_FACTURATION_USERS, MOIS_OUVERTURE, NOMS, envCourant, LIBELLE_ENV } from './config';
 import { lister, creer, modifier, supprimer, texte, chaine, memo, oublier } from './airtable';
 import { joursDuMois, ferieNom, isWeekend, estOuvre, exerciceDe, aujourdhuiParis, estDateValide } from './dates';
 import { chargerAbsences, absencesDe } from './payfit';
@@ -30,6 +30,9 @@ function lireFil(v: unknown): CommentaireStocke[] {
   try { const x = JSON.parse(texte(v) || '[]'); return Array.isArray(x) ? x : []; } catch { return []; }
 }
 
+// Mois d'avant l'ouverture de Carnet : toujours « Validée ».
+const statutDe = (ym: string, v: unknown): Statut => (ym < MOIS_OUVERTURE ? 'Validée' : ((texte(v) || 'A compléter') as Statut));
+
 export async function lireStatut(prenom: string, ym: string): Promise<LigneStatut> {
   const f = VALIDATION.f;
   const recs = await lister(VALIDATION.table, {
@@ -38,10 +41,10 @@ export async function lireStatut(prenom: string, ym: string): Promise<LigneStatu
     max: 1,
   });
   const r = recs[0];
-  if (!r) return { id: null, statut: 'A compléter', motif: null, soumisLe: null, decisionLe: null, fil: [], off: [] };
+  if (!r) return { id: null, statut: statutDe(ym, null), motif: null, soumisLe: null, decisionLe: null, fil: [], off: [] };
   return {
     id: r.id,
-    statut: (texte(r.fields[f.statut]) || 'A compléter') as Statut,
+    statut: statutDe(ym, r.fields[f.statut]),
     motif: texte(r.fields[f.motif]) || null,
     soumisLe: texte(r.fields[f.soumisLe]) || null,
     decisionLe: texte(r.fields[f.decisionLe]) || null,
@@ -61,7 +64,7 @@ export async function statutsDuMois(ym: string): Promise<Map<string, LigneStatut
     const cle = texte(r.fields[f.cle]);
     m.set(cle, {
       cle, id: r.id,
-      statut: (texte(r.fields[f.statut]) || 'A compléter') as Statut,
+      statut: statutDe(ym, r.fields[f.statut]),
       motif: texte(r.fields[f.motif]) || null,
       soumisLe: texte(r.fields[f.soumisLe]) || null,
       decisionLe: texte(r.fields[f.decisionLe]) || null,
@@ -140,6 +143,7 @@ function analyser(ym: string, e: Etat, off: Set<string> = new Set()) {
 
 function verrou(u: Utilisateur, ym: string, statut: Statut): string | null {
   if (u.role === 'admin') return null;
+  if (ym < MOIS_OUVERTURE) return 'Mois antérieur à novembre 2026 : temps déjà recensés dans Tps W, saisie verrouillée.';
   if (statut === 'Validée') return 'Mois validé : la saisie est verrouillée.';
   return null;
 }
@@ -328,20 +332,24 @@ export async function supprimerCommentaire(u: Utilisateur, id: string): Promise<
 
 // ── Paramètres ───────────────────────────────────────────────────────────
 // Lignes de type « Paramètre » de la table AI Timesheet, repérées par leur clé.
-export function balanceVisibleUsers(): Promise<{ id: string | null; actif: boolean }> {
-  return memo('param:balance', 60 * 1000, async () => {
+function parametre(cle: string): Promise<{ id: string | null; actif: boolean }> {
+  return memo(`param:${cle}`, 60 * 1000, async () => {
     const f = VALIDATION.f;
-    const r = (await lister(VALIDATION.table, { fields: [f.actif], filterByFormula: `{${NOMS.validationCle}}=${chaine(PARAM_BALANCE_USERS)}`, max: 1 }))[0];
+    const r = (await lister(VALIDATION.table, { fields: [f.actif], filterByFormula: `{${NOMS.validationCle}}=${chaine(cle)}`, max: 1 }))[0];
     return { id: r?.id || null, actif: !!r?.fields[f.actif] };
   });
 }
-export async function definirBalanceVisible(actif: boolean): Promise<void> {
+async function definirParametre(cle: string, actif: boolean, description: string): Promise<void> {
   const f = VALIDATION.f;
-  const p = await balanceVisibleUsers();
+  const p = await parametre(cle);
   if (p.id) await modifier(VALIDATION.table, [{ id: p.id, fields: { [f.actif]: actif } }]);
-  else await creer(VALIDATION.table, [{ [f.cle]: PARAM_BALANCE_USERS, [f.type]: 'Paramètre', [f.actif]: actif }]);
+  else await creer(VALIDATION.table, [{ [f.cle]: cle, [f.type]: 'Paramètre', [f.actif]: actif, [f.description]: description }]);
   oublier('param:');
 }
+export const balanceVisibleUsers = () => parametre(PARAM_BALANCE_USERS);
+export const definirBalanceVisible = (actif: boolean) => definirParametre(PARAM_BALANCE_USERS, actif, 'Balance des affaires visible par les Users dans « Mes affaires ».');
+export const facturationVisibleUsers = () => parametre(PARAM_FACTURATION_USERS);
+export const definirFacturationVisible = (actif: boolean) => definirParametre(PARAM_FACTURATION_USERS, actif, '% de facturation des affaires visible par les Users dans « Mes affaires en cours ».');
 
 // ── Validation en lot (Admin) ────────────────────────────────────────────
 // Une lecture des statuts du mois, puis écritures groupées par lots de 10 :

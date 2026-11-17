@@ -612,3 +612,88 @@ span.etat-pastille { padding-right: 11px; background-image: none; cursor: defaul
 .bal-tableau tr.sous-ligne td { background: #FBFCFE; padding-top: 7px; padding-bottom: 7px; }
 .bal-collab { padding-left: 32px !important; color: var(--violet); }
 .bal-tableau tr.sous-ligne .ma-barre span { background: #C7D2FE; }
+
+/* ════════ Mes affaires : boutons, % facturé ════════ */
+.ma-boutons { margin-left: auto; display: flex; flex-direction: column; gap: 6px; align-self: center; }
+.ma-boutons .btn { justify-content: center; }
+.ma-tete .ma-boutons .btn { margin-left: 0; }
+.ma-carte[style] .ma-ligne { grid-template-columns: var(--cols); }
+.ma-fact { font-size: 13px; text-align: right; }
+.ma-barre-fact { margin-left: auto; width: 90px; }
+.ma-barre-fact span { background: #6EE7B7; }
+@media (max-width: 860px) {
+  .ma-carte[style] .ma-ligne { grid-template-columns: minmax(0, 1fr) auto; }
+  .ma-fact { grid-column: 1; text-align: left; display: flex; align-items: center; gap: 8px; }
+  .ma-fact .ma-barre-fact { margin: 0; width: 70px; }
+  .ma-boutons { flex-direction: row; margin-left: 0; width: 100%; }
+  .ma-boutons .btn { flex: 1; }
+}
+
+/* ════════ Fenêtre « Créer une affaire » ════════ */
+.ca-voile { padding: 4vh 16px 16px; overflow-y: auto; }
+.ca-fenetre { background: #fff; width: 100%; max-width: 960px; border-radius: 14px; border: 1px solid var(--gris); box-shadow: 0 20px 48px rgba(17,24,39,.18); display: flex; flex-direction: column; max-height: 92vh; }
+.ca-tete { display: flex; align-items: flex-start; gap: 12px; padding: 18px 22px 14px; border-bottom: 1px solid var(--gris-leger); }
+.ca-tete h2 { margin: 0; font-size: 18px; }
+.ca-apercu { font-size: 12.5px; color: var(--noir70); margin-top: 3px; }
+.ca-apercu strong { color: var(--rouge); font-weight: 600; }
+.ca-fermer { margin-left: auto; width: 32px; height: 32px; border-radius: 8px; font-size: 22px; line-height: 1; color: #9CA3AF; }
+.ca-fermer:hover { background: var(--gris-leger); color: var(--violet); }
+.ca-corps { padding: 6px 22px 18px; overflow-y: auto; }
+.ca-corps h3 { font-size: 15px; margin: 16px 0 10px; }
+.ca-corps h3:not(:first-child) { border-top: 1px solid var(--gris-leger); padding-top: 20px; margin-top: 22px; }
+.ca-grille { display: grid; gap: 14px 16px; margin-bottom: 14px; align-items: start; }
+.ca-grille.g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ca-grille.g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ca-grille.g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.ca-champ.large { grid-column: 1 / -1; }
+.ca-libelle { font-size: 12.5px; font-weight: 600; color: var(--violet); margin-bottom: 4px; }
+.ca-oblig { color: var(--danger); margin-left: 2px; }
+.ca-aide { font-size: 11.5px; color: var(--noir70); margin: -1px 0 6px; line-height: 1.5; }
+.ca-input, .ca-select, .ca-boite { width: 100%; border: 1px solid #D1D5DB; border-radius: 8px; background: #fff; min-height: 36px; }
+.ca-input { padding: 7px 10px; }
+.ca-zone { resize: vertical; min-height: 62px; }
+.ca-select { padding: 7px 30px 7px 10px; appearance: none; -webkit-appearance: none;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center; }
+.ca-input:focus, .ca-select:focus, .ca-boite:focus-within { outline: none; border-color: #A5B4FC; box-shadow: 0 0 0 3px #EEF0FF; }
+.ca-boite { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; padding: 4px 6px; }
+.ca-plus { width: 24px; height: 24px; border-radius: 6px; background: var(--gris-leger); color: var(--violet); font-size: 16px; line-height: 1; }
+.ca-plus:hover { background: #E0E7FF; color: var(--rouge); }
+.ca-puce { display: inline-flex; align-items: center; gap: 4px; background: #EEF0FF; color: #3730A3; border-radius: 6px; padding: 2px 4px 2px 8px; font-size: 12px; font-weight: 500; }
+.ca-puce button { color: #6366F1; font-size: 14px; line-height: 1; padding: 0 3px; border-radius: 4px; }
+.ca-puce button:hover { background: #E0E7FF; }
+.ca-dossiers { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.ca-dossier { background: var(--gris-leger); color: var(--violet); }
+.ca-ajout { font-weight: 500; }
+.ca-multi { position: relative; }
+.ca-menu { position: absolute; left: 0; top: calc(100% + 4px); z-index: 30; width: 100%; min-width: 220px; background: #fff; border: 1px solid var(--gris); border-radius: 10px; box-shadow: 0 10px 28px rgba(17,24,39,.12); padding: 6px; }
+.ca-menu-large { min-width: 300px; }
+.ca-filtre { width: 100%; border: 1px solid #D1D5DB; border-radius: 7px; padding: 6px 9px; margin-bottom: 5px; }
+.ca-menu-liste { max-height: 240px; overflow-y: auto; }
+.ca-option { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 6px 8px; border-radius: 6px; font-size: 13px; cursor: pointer; }
+.ca-option:hover { background: var(--gris-leger); }
+.ca-role { margin-left: auto; font-size: 11px; color: #9CA3AF; white-space: nowrap; }
+.ca-vide { padding: 8px; color: var(--noir70); font-size: 12.5px; }
+.ca-unite { position: relative; }
+.ca-unite .ca-input { padding-right: 28px; }
+.ca-unite span { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #9CA3AF; font-size: 13px; }
+.ca-err { margin: 0 22px 10px; }
+.ca-pied { display: flex; align-items: center; gap: 10px; padding: 14px 22px; border-top: 1px solid var(--gris-leger); }
+.ca-pied .discret { margin-right: auto; font-size: 12px; }
+@media (max-width: 860px) {
+  .ca-grille.g3, .ca-grille.g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+  .ca-voile { padding: 0; }
+  .ca-fenetre { max-height: none; min-height: 100%; border-radius: 0; border: none; }
+  .ca-grille.g2, .ca-grille.g3, .ca-grille.g4 { grid-template-columns: minmax(0, 1fr); }
+  .ca-pied { position: sticky; bottom: 0; background: #fff; }
+}
+
+/* ════════ Téléphone : pas de zoom ════════ */
+html { -webkit-text-size-adjust: 100%; touch-action: manipulation; }
+@media (max-width: 960px) {
+  /* iOS zoome sur un champ dont le texte fait moins de 16 px */
+  input, select, textarea { font-size: 16px !important; }
+  .barre-mobile { padding-top: env(safe-area-inset-top); height: calc(54px + env(safe-area-inset-top)); }
+  .page { padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+}

@@ -1,11 +1,11 @@
 // Affaires pour le sélecteur, et « Mes affaires » (Chef·fe de projet / Manager).
 // Aucun montant n'est renvoyé, sauf la balance si l'Admin l'a rendue visible.
 import { exigerUtilisateur, gerer, json, ErreurHttp } from '@/lib/auth';
-import { definirCdp, definirEtat, peutGerer } from '@/lib/affaires';
+import { creerAffaire, definirCdp, definirEtat, peutGerer } from '@/lib/affaires';
 import { affaires, versLite, fiches } from '@/lib/referentiels';
 import { personneCible } from '@/lib/cible';
 import { saisiesExercice } from '@/lib/temps';
-import { balanceVisibleUsers } from '@/lib/mois';
+import { balanceVisibleUsers, facturationVisibleUsers } from '@/lib/mois';
 import { aujourdhuiParis, exerciceDe, normNom } from '@/lib/dates';
 import { memo, oublier } from '@/lib/airtable';
 import type { AffaireMienne } from '@/lib/types';
@@ -29,6 +29,8 @@ export async function GET(req: Request) {
 
     // Balance : jamais envoyée à un User tant que le paramètre Admin est désactivé.
     const voirBalance = u.role === 'admin' || (await balanceVisibleUsers()).actif;
+    // % de facturation : même règle, paramètre distinct.
+    const voirFacturation = u.role === 'admin' || (await facturationVisibleUsers()).actif;
 
     const mes: AffaireMienne[] = [];
     for (const a of toutes) {
@@ -41,20 +43,23 @@ export async function GET(req: Request) {
         const b = a.rentaGlobale; // formule Airtable « Rentabilité Globale »
         m.balance = b;
       }
+      if (voirFacturation) m.facture = a.facture;
       mes.push(m);
     }
-    return json({ affaires: listeG, mes, exercice: ex, balanceVisible: voirBalance });
+    return json({ affaires: listeG, mes, exercice: ex, balanceVisible: voirBalance, facturationVisible: voirFacturation, moi: p.prenom });
   });
 }
 
 // Actions sur une affaire, pour le compte connecté :
 //   { action: 'cdp', affaireId, ajouter: boolean }  se déclarer / ne plus être Chef·fe de projet
 //   { action: 'etat', affaireId, etat }               changer l'état interne (CDP, Manager ou Admin)
+//   { action: 'creer', affaire: {…} }                  créer une affaire (fenêtre « Créer une affaire »)
 export async function POST(req: Request) {
   return gerer(async () => {
     const u = await exigerUtilisateur();
     const b = await req.json().catch(() => ({}));
     const p = await personneCible(u, null);
+    if (b.action === 'creer') return json({ ok: true, ...(await creerAffaire(u, b.affaire)) });
     const id = String(b.affaireId || '');
     if (b.action === 'cdp') await definirCdp(p, id, b.ajouter !== false);
     else if (b.action === 'etat') await definirEtat(u, p, id, String(b.etat || ''));
