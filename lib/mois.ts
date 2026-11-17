@@ -159,7 +159,7 @@ export async function donneesMois(u: Utilisateur, p: Personne, ym: string): Prom
   const raison = verrou(u, ym, st.statut);
   return {
     ym, env: envCourant(),
-    collab: { cle: `${p.prenom} - ${exerciceDe(ym + '-01')}`, prenom: p.prenom, nom: p.nom, ficheId: fiche?.id || null },
+    collab: { cle: `${p.prenom} - ${exerciceDe(ym + '-01')}`, prenom: p.prenom, nom: p.nom, ficheId: fiche?.id || null, pole: fiche?.pole || '' },
     statut: st.statut, motifRefus: st.motif, soumisLe: st.soumisLe, decisionLe: st.decisionLe,
     jours: a.jours, creneaux: a.creneaux, affaires: refs,
     editable: !raison, raisonVerrou: raison,
@@ -173,12 +173,20 @@ export async function donneesMois(u: Utilisateur, p: Personne, ym: string): Prom
   };
 }
 
+// Pôles d'ingénierie : une affaire STR, ENV ou DEV hors du pôle de l'ingénieur
+// demande confirmation (les codes hors affaire et AI BOIS ne sont pas concernés).
+const POLES_INGE = new Set(['STR', 'ENV', 'DEV']);
+export function horsPole(monPole: string | undefined, polAffaire: string): boolean {
+  return !!monPole && POLES_INGE.has(monPole) && POLES_INGE.has(polAffaire) && monPole !== polAffaire;
+}
+
 // ── Écriture des créneaux ────────────────────────────────────────────────
 export async function enregistrer(u: Utilisateur, p: Personne, ym: string, changements: Changement[]): Promise<DonneesMois> {
   const st = await lireStatut(p.prenom, ym);
   const raison = verrou(u, ym, st.statut);
   if (raison) throw new ErreurHttp(423, raison);
   const e = await charger(p, ym);
+  const fiche = await ficheDe(p.prenom, exerciceDe(ym + '-01'));
   const cibles: Cible[] = [];
   const off = new Set(st.off);
   for (const ch of changements) {
@@ -201,6 +209,11 @@ export async function enregistrer(u: Utilisateur, p: Personne, ym: string, chang
       if (affaire.clos && !ch.confirmClot) {
         throw new ErreurHttp(409, 'Confirmation requise : affaire clôturée', { confirmer: 'clos', affaireId: affaire.id });
       }
+      // Affaire d'un autre pôle que celui de l'ingénieur : avertissement, saisie maintenue possible.
+      const dejaLa = e.saisies.some(s => s.date === ch.date && s.creneau === ch.creneau && s.affaireId === affaire!.id);
+      if (horsPole(fiche?.pole, affaire.pole) && !dejaLa && !ch.confirmPole) {
+        throw new ErreurHttp(409, `Confirmation requise : affaire du pôle ${affaire.pole}`, { confirmer: 'pole', affaireId: affaire.id });
+      }
       if (!estOuvre(ch.date) && !ch.confirmNonOuvre) {
         throw new ErreurHttp(409, 'Confirmation requise : jour non ouvré', { confirmer: 'nonOuvre', date: ch.date });
       }
@@ -212,7 +225,7 @@ export async function enregistrer(u: Utilisateur, p: Personne, ym: string, chang
       confirmAbsence: !!(affaire && absent && ch.confirmAbsence),
     });
   }
-  const cx: Contexte = { personne: p, fiche: await ficheDe(p.prenom, exerciceDe(ym + '-01')), auteur: u.email };
+  const cx: Contexte = { personne: p, fiche, auteur: u.email };
   if (cibles.length) await appliquer(cx, e.saisies, cibles);
   const maj: Record<string, unknown> = {};
   const offTrie = [...off].filter(x => x.slice(0, 7) === ym).sort();

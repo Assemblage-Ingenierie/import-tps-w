@@ -38,7 +38,7 @@ export interface Conflit { date: string; creneau: Creneau; affaireId: string }
 export interface DonneesMois {
   ym: string;
   env: 'test' | 'production';
-  collab: { cle: string; prenom: string; nom: string; ficheId: string | null };
+  collab: { cle: string; prenom: string; nom: string; ficheId: string | null; pole: string };
   statut: Statut;
   motifRefus: string | null;
   soumisLe: string | null;
@@ -64,6 +64,7 @@ export interface Changement {
   confirmClot?: boolean;
   confirmNonOuvre?: boolean;
   confirmAbsence?: boolean;
+  confirmPole?: boolean;     // saisie maintenue sur une affaire d'un autre pôle
 }
 
 export interface Commentaire {

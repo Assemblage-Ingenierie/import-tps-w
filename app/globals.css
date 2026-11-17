@@ -733,3 +733,6 @@ html { -webkit-text-size-adjust: 100%; touch-action: manipulation; }
   .ca-menu-fiches { min-width: 0; }
   .ca-fiche-champs { grid-template-columns: 1fr; }
 }
+
+/* Créer une affaire : ligne pleine largeur (Spécificité Chorus) */
+.ca-grille.g1 { grid-template-columns: minmax(0, 1fr); }

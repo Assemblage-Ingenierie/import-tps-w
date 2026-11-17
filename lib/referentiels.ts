@@ -64,12 +64,13 @@ export interface Fiche {
   email: string;
   nom: string;
   idPayfit: string;
+  pole: string;     // « STR », « ENV », « DEV » ou vide
 }
 
 export function fiches(): Promise<Fiche[]> {
   return memo('ref:fiches', 10 * 60 * 1000, async () => {
     const f = COLLAB.f;
-    const recs = await lister(COLLAB.table, { fields: [f.cle, f.prenom, f.exercice, f.cout, f.email, f.nom, f.idPayfit] });
+    const recs = await lister(COLLAB.table, { fields: [f.cle, f.prenom, f.exercice, f.cout, f.email, f.nom, f.idPayfit, f.pole] });
     return recs.map(r => ({
       id: r.id,
       cle: texte(r.fields[f.cle]),
@@ -79,6 +80,7 @@ export function fiches(): Promise<Fiche[]> {
       email: texte(r.fields[f.email]).trim().toLowerCase(),
       nom: texte(r.fields[f.nom]).trim(),
       idPayfit: texte(r.fields[f.idPayfit]).trim(),
+      pole: texte(r.fields[f.pole]).trim(),
     })).filter(x => x.prenom);
   });
 }

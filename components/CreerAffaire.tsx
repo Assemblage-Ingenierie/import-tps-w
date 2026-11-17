@@ -11,6 +11,7 @@ const vide = (moi: string): NouvelleAffaire => ({
   architecte: [], moa: [], bet: [], entreprise: [], adresse: '',
   progPrincipaux: [], progSecondaires: [], materiaux: [], rehabNeuf: [],
   surface: null, budgetHT: null, manager: '', cdp: O.CDPS.includes(moi) ? [moi] : [], marchePI: null,
+  specFacturation: '', siret: '', codeMarche: '', codeService: '', engagement: '',
 });
 
 // Ferme un menu déroulant au clic extérieur ou sur Échap.
@@ -253,6 +254,17 @@ export default function CreerAffaire({ moi, onFermer, onCree }: { moi: string; o
             <Champ large libelle="Marché PI" aide={<>Prestations intellectuelles d&apos;AI et des ST<br />PI AI + PI ST caché</>}>
               <div className="ca-unite"><input className="ca-input" inputMode="decimal" value={a.marchePI ?? ''} onChange={e => maj('marchePI', nombre(e.target.value))} /><span>€</span></div>
             </Champ>
+          </div>
+
+          <h3>Spécificité Chorus</h3>
+          <div className="ca-grille g1">
+            <Champ libelle="Spécificité facturation"><textarea className="ca-input ca-zone" rows={3} value={a.specFacturation} onChange={e => maj('specFacturation', e.target.value)} /></Champ>
+          </div>
+          <div className="ca-grille g4">
+            <Champ libelle="A1, 2, 9 ou 12 et siret"><textarea className="ca-input ca-zone" rows={2} value={a.siret} onChange={e => maj('siret', e.target.value)} /></Champ>
+            <Champ libelle="Code marché"><textarea className="ca-input ca-zone" rows={2} value={a.codeMarche} onChange={e => maj('codeMarche', e.target.value)} /></Champ>
+            <Champ libelle="Code service"><textarea className="ca-input ca-zone" rows={2} value={a.codeService} onChange={e => maj('codeService', e.target.value)} /></Champ>
+            <Champ libelle="N° d'engagement"><textarea className="ca-input ca-zone" rows={2} value={a.engagement} onChange={e => maj('engagement', e.target.value)} /></Champ>
           </div>
         </div>
 

@@ -21,7 +21,7 @@ const k = (d: string, c: Creneau) => `${d}|${c}`;
 const nb = (v: number) => String(Math.round(v * 10) / 10).replace('.', ',');
 
 type Vue = 'liste' | 'calendrier';
-interface Confirmation { clos: AffaireLite[]; nonOuvres: string[]; absences: string[]; changements: Changement[]; suite?: () => void; depuisPanneau?: boolean }
+interface Confirmation { horsPole: AffaireLite[]; clos: AffaireLite[]; nonOuvres: string[]; absences: string[]; changements: Changement[]; suite?: () => void; depuisPanneau?: boolean }
 
 async function appel<T>(url: string, init?: RequestInit): Promise<T> {
   const r = await fetch(url, { ...init, headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) } });
@@ -182,6 +182,8 @@ export default function Saisie({ prenom }: { prenom?: string }) {
 
   function proposer(changements: Changement[], suite?: () => void, depuisPanneau = false) {
     const clos = new Map<string, AffaireLite>();
+    const horsPole = new Map<string, AffaireLite>();
+    const monPole = data?.collab.pole || '';
     const nonOuvres = new Set<string>();
     const absences = new Set<string>();
     for (const ch of changements) {
@@ -189,11 +191,12 @@ export default function Saisie({ prenom }: { prenom?: string }) {
       const a = affParId.get(ch.affaireId);
       const deja = creneaux.get(k(ch.date, ch.creneau));
       if (a?.clos && !(deja?.affaireId === a.id && deja.confirmClot)) clos.set(a.id, a);
+      if (a && ['STR', 'ENV', 'DEV'].includes(monPole) && ['STR', 'ENV', 'DEV'].includes(a.pole) && a.pole !== monPole && deja?.affaireId !== a.id) horsPole.set(a.id, a);
       if (!estOuvre(ch.date) && !(deja?.affaireId && deja.confirmNonOuvre)) nonOuvres.add(ch.date);
       if (jourParDate.get(ch.date)?.absence[ch.creneau] && !(deja?.affaireId && deja.confirmAbsence)) absences.add(k(ch.date, ch.creneau));
     }
-    if (clos.size || nonOuvres.size || absences.size) setConfirmation({ clos: [...clos.values()], nonOuvres: [...nonOuvres].sort(), absences: [...absences].sort(), changements, suite, depuisPanneau });
-    else envoyer(changements.map(ch => ({ ...ch, confirmClot: true, confirmNonOuvre: true, confirmAbsence: true }))).then(ok => { if (ok) suite?.(); });
+    if (horsPole.size || clos.size || nonOuvres.size || absences.size) setConfirmation({ horsPole: [...horsPole.values()], clos: [...clos.values()], nonOuvres: [...nonOuvres].sort(), absences: [...absences].sort(), changements, suite, depuisPanneau });
+    else envoyer(changements.map(ch => ({ ...ch, confirmClot: true, confirmNonOuvre: true, confirmAbsence: true, confirmPole: true }))).then(ok => { if (ok) suite?.(); });
   }
 
   // Panneau des créneaux manquants : enregistre le brouillon, puis soumet le mois si demandé.
@@ -364,7 +367,7 @@ export default function Saisie({ prenom }: { prenom?: string }) {
       if (err.data?.manquants) setPanneau('manquants');
       if (action === 'soumettre' && err.data?.conflits?.length) {
         const cs = err.data.conflits;
-        setConfirmation({ clos: [], nonOuvres: [], absences: cs.map(c => k(c.date, c.creneau)), changements: cs.map(c => ({ date: c.date, creneau: c.creneau, affaireId: c.affaireId })), suite: () => workflow('soumettre') });
+        setConfirmation({ horsPole: [], clos: [], nonOuvres: [], absences: cs.map(c => k(c.date, c.creneau)), changements: cs.map(c => ({ date: c.date, creneau: c.creneau, affaireId: c.affaireId })), suite: () => workflow('soumettre') });
         return;
       }
       setErreur(err.message);
@@ -742,8 +745,12 @@ export default function Saisie({ prenom }: { prenom?: string }) {
       {confirmation && (
         <div className="voile" onMouseDown={() => setConfirmation(null)}>
           <div className="dialogue" onMouseDown={e => e.stopPropagation()} role="alertdialog">
+            {confirmation.horsPole.length > 0 && <>
+              <h3>{confirmation.horsPole.length > 1 ? 'Ces affaires ne sont pas' : 'Cette affaire n’est pas'} de ton pôle ({data?.collab.pole}) : confirmes-tu la saisie ?</h3>
+              <ul>{confirmation.horsPole.map(a => <li key={a.id}><strong>{a.code}</strong> — {a.nom} · pôle {a.pole}</li>)}</ul>
+            </>}
             {confirmation.clos.length > 0 && <>
-              <h3>Cette affaire est terminée, confirmes-tu la saisie de temps ?</h3>
+              <h3>{confirmation.horsPole.length ? 'Et cette' : 'Cette'} affaire est terminée, confirmes-tu la saisie de temps ?</h3>
               <ul>{confirmation.clos.map(a => <li key={a.id}><strong>{a.code}</strong> — {a.nom} · état « {a.etat} »</li>)}</ul>
             </>}
             {confirmation.nonOuvres.length > 0 && <>
@@ -771,18 +778,18 @@ export default function Saisie({ prenom }: { prenom?: string }) {
                     setAffaires(l => l.map(a => (rouvertes.has(a.id) ? { ...a, clos: false, etat: 'En Cours' } : a)));
                   } catch (e) { setErreur((e as Error).message); setEnCours(false); return; }
                   setEnCours(false);
-                  const ch = conf.changements.map(c => ({ ...c, confirmClot: true, confirmNonOuvre: true, confirmAbsence: true }));
+                  const ch = conf.changements.map(c => ({ ...c, confirmClot: true, confirmNonOuvre: true, confirmAbsence: true, confirmPole: true }));
                   envoyer(ch).then(ok => { if (ok) { setInfo(`Affaire rouverte (En Cours) : ${conf.clos.map(a => a.code).join(', ')}.`); conf.suite?.(); } });
                 }}>
                   Rouvrir l&apos;affaire et saisir
                 </button>
               )}
               <button className="btn btn-pri" onClick={() => {
-                const ch = confirmation.changements.map(c => ({ ...c, confirmClot: true, confirmNonOuvre: true, confirmAbsence: true }));
+                const ch = confirmation.changements.map(c => ({ ...c, confirmClot: true, confirmNonOuvre: true, confirmAbsence: true, confirmPole: true }));
                 const suite = confirmation.suite;
                 setConfirmation(null); envoyer(ch).then(ok => { if (ok) suite?.(); });
               }}>
-                {confirmation.clos.length ? 'Je sais que cette affaire est terminée, je conserve tout de même ma saisie' : confirmation.absences.length ? 'Confirmer tout de même ma saisie' : 'Je confirme ce temps'}
+                {confirmation.clos.length ? 'Je sais que cette affaire est terminée, je conserve tout de même ma saisie' : confirmation.horsPole.length ? 'Je maintiens ma saisie sur cette affaire' : confirmation.absences.length ? 'Confirmer tout de même ma saisie' : 'Je confirme ce temps'}
               </button>
             </div>
           </div>

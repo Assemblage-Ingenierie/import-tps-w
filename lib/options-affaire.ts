@@ -35,6 +35,12 @@ export interface NouvelleAffaire {
   manager: string;
   cdp: string[];
   marchePI: number | null;
+  // Spécificité Chorus
+  specFacturation: string;
+  siret: string;
+  codeMarche: string;
+  codeService: string;
+  engagement: string;
 }
 
 export interface Organisation { id: string; nom: string; roles: string[]; competences: string[] }

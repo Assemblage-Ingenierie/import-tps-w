@@ -101,6 +101,7 @@ export const COLLAB = {
     email: 'fldSetis69MISYRAt',
     nom: 'fld2VZtRM5lZ8cL4h',
     idPayfit: 'fldrSXfg6Uyf6mOJv',
+    pole: 'fldpCWVJMsYfwmLIK', // « Pôle » : STR, ENV ou DEV (créé le 17/11/2026)
   },
 };
 
@@ -136,6 +137,12 @@ export const AFFAIRE = {
     rehabNeuf: 'fldyD7L9E7cGL26vH',
     surface: 'fld9HmFcoH2XYpm6y',       // « Surface(m²) »
     budgetHT: 'fldc9yGvzPAdhG6JR',
+    // Spécificité Chorus
+    specFacturation: 'fldnkh5UPM2wxXcM1', // « Spécificité facturation »
+    siret: 'fldkOdMU8rviSQoXq',           // « A1, 2, 9 ou 12 et siret »
+    codeMarche: 'fldyFmAYsfVLB7327',      // « Code marché »
+    codeService: 'fldv88yIQkK8mg4TI',     // « Code service »
+    engagement: 'fldynZGS4KVWnG8IL',      // « N° d'engagement »
   },
 };
 

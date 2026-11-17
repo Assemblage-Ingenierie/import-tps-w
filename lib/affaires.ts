@@ -95,6 +95,10 @@ export async function creerAffaire(u: Utilisateur, brut: unknown): Promise<{ id:
   const contrat = choix(b.contrat, O.CONTRATS, 'Contrat'); if (contrat) c[f.contrat] = contrat;
   const manager = choix(b.manager, O.MANAGERS, 'Manager'); if (manager) c[f.manager] = manager;
   const adresse = txt(b.adresse, 1000); if (adresse) c[f.adresse] = adresse;
+  // Spécificité Chorus (textes libres)
+  for (const [id, v] of [[f.specFacturation, b.specFacturation], [f.siret, b.siret], [f.codeMarche, b.codeMarche], [f.codeService, b.codeService], [f.engagement, b.engagement]] as const) {
+    const s = txt(v, 2000); if (s) c[id] = s;
+  }
   const multiples: [string, unknown, string[], string][] = [
     [f.cdp, b.cdp, O.CDPS, 'CDP'],
     [f.progPrincipaux, b.progPrincipaux, O.PROG_PRINCIPAUX, 'Programmes principaux'],
