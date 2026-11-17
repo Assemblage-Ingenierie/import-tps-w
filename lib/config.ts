@@ -144,7 +144,7 @@ export const AFFAIRE = {
 // maîtres d'ouvrage, BET, entreprises) liées aux affaires.
 export const CRM = {
   table: 'tbldFyeiID6wEA0ET',
-  f: { nom: 'fldAgF3mTYqbAE103', role: 'fldus5VL4hBxcvmvd' },
+  f: { nom: 'fldAgF3mTYqbAE103', role: 'fldus5VL4hBxcvmvd', competences: 'fld6nyiBd9joiW4uM' },
 };
 
 // Mois antérieurs à l'ouverture de Carnet : déjà recensés dans Tps W (import

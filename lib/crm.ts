@@ -6,9 +6,9 @@ import type { Organisation } from './options-affaire';
 
 export function organisations(): Promise<Organisation[]> {
   return memo('ref:crm', 10 * 60 * 1000, async () => {
-    const recs = await lister(CRM.table, { fields: [CRM.f.nom, CRM.f.role] });
+    const recs = await lister(CRM.table, { fields: [CRM.f.nom, CRM.f.role, CRM.f.competences] });
     return recs
-      .map(r => ({ id: r.id, nom: texte(r.fields[CRM.f.nom]).trim(), roles: liste(r.fields[CRM.f.role]) }))
+      .map(r => ({ id: r.id, nom: texte(r.fields[CRM.f.nom]).trim(), roles: liste(r.fields[CRM.f.role]), competences: liste(r.fields[CRM.f.competences]) }))
       .filter(o => o.nom)
       .sort((a, b) => a.nom.localeCompare(b.nom, 'fr'));
   });

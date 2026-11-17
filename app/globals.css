@@ -697,3 +697,39 @@ html { -webkit-text-size-adjust: 100%; touch-action: manipulation; }
   .barre-mobile { padding-top: env(safe-area-inset-top); height: calc(54px + env(safe-area-inset-top)); }
   .page { padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
 }
+
+/* ════════ Créer une affaire : menus à bulles (couleurs Airtable) ════════ */
+.ma-boutons .btn { align-self: stretch; margin-left: 0; }
+.ca-bulle { display: inline-flex; align-items: center; gap: 3px; border-radius: 999px; padding: 2px 10px; font-size: 12.5px; font-weight: 500; line-height: 1.45; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.ca-bulle button { color: inherit; opacity: .55; font-size: 14px; line-height: 1; padding: 0 0 0 3px; margin-right: -4px; }
+.ca-bulle button:hover { opacity: 1; }
+.ca-declencheur { display: flex; align-items: center; gap: 6px; width: 100%; min-height: 36px; padding: 4px 32px 4px 8px; border: 1px solid #D1D5DB; border-radius: 8px; background: #fff; text-align: left; position: relative; cursor: pointer; }
+.ca-declencheur:hover { border-color: #A5B4FC; }
+.ca-declencheur.ouvert, .ca-declencheur:focus-visible { outline: none; border-color: #818CF8; box-shadow: 0 0 0 3px #EEF0FF; }
+.ca-invite { color: #9CA3AF; font-size: 13px; padding-left: 2px; }
+.ca-chevron { position: absolute; right: 11px; top: 50%; width: 8px; height: 8px; margin-top: -6px; border-right: 1.8px solid #9CA3AF; border-bottom: 1.8px solid #9CA3AF; transform: rotate(45deg); transition: transform .15s, margin .15s; }
+.ca-declencheur.ouvert .ca-chevron { transform: rotate(225deg); margin-top: -2px; border-color: var(--rouge); }
+.ca-boite { cursor: pointer; }
+.ca-boite.ouvert { border-color: #818CF8; box-shadow: 0 0 0 3px #EEF0FF; }
+.ca-menu { padding: 6px; border-radius: 12px; box-shadow: 0 12px 32px rgba(17,24,39,.14); animation: ca-ouvre .12s ease-out; }
+@keyframes ca-ouvre { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.ca-filtre { border: none; border-bottom: 1px solid var(--gris-leger); border-radius: 0; padding: 7px 8px 9px; margin-bottom: 4px; outline: none; }
+.ca-opt { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; padding: 5px 8px; border-radius: 8px; text-align: left; }
+.ca-opt.actif { background: #F5F7FF; }
+.ca-coche { color: var(--rouge); flex-shrink: 0; }
+.ca-menu-fiches { min-width: 420px; }
+.ca-fiche { display: block; width: 100%; text-align: left; padding: 9px 10px; border-radius: 9px; border: 1px solid transparent; }
+.ca-fiche + .ca-fiche { margin-top: 2px; }
+.ca-fiche:hover { background: #F5F7FF; border-color: #E0E7FF; }
+.ca-fiche-nom { display: block; font-weight: 600; font-size: 13.5px; color: var(--violet); }
+.ca-fiche-champs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 5px; }
+.ca-fiche-champs small { display: block; font-size: 10.5px; color: #9CA3AF; margin-bottom: 2px; }
+.ca-bulles { display: flex; flex-wrap: wrap; gap: 4px; }
+.ca-bulles .ca-bulle { font-size: 11.5px; padding: 1px 8px; }
+.ca-dossier { display: inline-flex; align-items: center; gap: 4px; background: #F5F7FF; border: 1px solid #E0E7FF; color: #3730A3; border-radius: 8px; padding: 3px 4px 3px 9px; font-size: 12.5px; font-weight: 500; }
+.ca-dossier button { color: #6366F1; font-size: 14px; line-height: 1; padding: 0 3px; border-radius: 4px; }
+.ca-dossier button:hover { background: #E0E7FF; }
+@media (max-width: 600px) {
+  .ca-menu-fiches { min-width: 0; }
+  .ca-fiche-champs { grid-template-columns: 1fr; }
+}

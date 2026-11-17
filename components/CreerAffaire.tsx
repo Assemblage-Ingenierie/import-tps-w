@@ -29,39 +29,90 @@ function useFermeture(ouvert: boolean, fermer: () => void) {
 
 const sansAccent = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
-// Choix multiples : étiquettes + bouton « + » qui ouvre une liste filtrable.
-function Multi({ valeurs, options, onChange, libelle }: { valeurs: string[]; options: string[]; onChange: (v: string[]) => void; libelle: string }) {
-  const [ouvert, setOuvert] = useState(false);
-  const [q, setQ] = useState('');
-  const ref = useFermeture(ouvert, () => setOuvert(false));
-  const liste = options.filter(o => !q || sansAccent(o).includes(sansAccent(q)));
-  const basculer = (o: string) => onChange(valeurs.includes(o) ? valeurs.filter(x => x !== o) : [...valeurs, o]);
+// Liste Airtable d'une option (pour sa couleur), retrouvée d'après le tableau d'options.
+const CLE = new Map<string[], string>([
+  [O.POLES, 'POLES'], [O.ETATS_INTERNES, 'ETATS_INTERNES'], [O.CONTRATS, 'CONTRATS'], [O.MANAGERS, 'MANAGERS'], [O.CDPS, 'CDPS'],
+  [O.MATERIAUX, 'MATERIAUX'], [O.REHAB_NEUF, 'REHAB_NEUF'], [O.PROG_PRINCIPAUX, 'PROG_PRINCIPAUX'], [O.PROG_SECONDAIRES, 'PROG_SECONDAIRES'],
+]);
+
+// Bulle colorée d'une option, comme dans Airtable.
+function Bulle({ liste, texte, onRetirer }: { liste: string; texte: string; onRetirer?: () => void }) {
   return (
-    <div className="ca-multi" ref={ref}>
-      <div className="ca-boite">
-        {valeurs.map(v => (
-          <span key={v} className="ca-puce">{v}<button type="button" aria-label={`Retirer ${v}`} onClick={() => basculer(v)}>×</button></span>
+    <span className="ca-bulle" style={O.teinte(liste, texte)}>
+      {texte}
+      {onRetirer && <button type="button" aria-label={`Retirer ${texte}`} onClick={e => { e.stopPropagation(); onRetirer(); }}>×</button>}
+    </span>
+  );
+}
+
+const Coche = () => (
+  <svg className="ca-coche" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7" /></svg>
+);
+
+// Menu d'options : recherche « Rechercher une option », bulles, flèches + Entrée.
+function MenuOptions({ liste, options, choisies, onBasculer }: { liste: string; options: string[]; choisies: string[]; onBasculer: (o: string) => void }) {
+  const [q, setQ] = useState('');
+  const [actif, setActif] = useState(0);
+  const vues = options.filter(o => !q || sansAccent(o).includes(sansAccent(q)));
+  useEffect(() => { setActif(0); }, [q]);
+  const clavier = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); setActif(i => Math.min(i + 1, vues.length - 1)); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setActif(i => Math.max(i - 1, 0)); }
+    else if (e.key === 'Enter') { e.preventDefault(); if (vues[actif]) onBasculer(vues[actif]); }
+  };
+  return (
+    <div className="ca-menu" onKeyDown={clavier}>
+      <input autoFocus className="ca-filtre" value={q} onChange={e => setQ(e.target.value)} placeholder="Rechercher une option" />
+      <div className="ca-menu-liste" role="listbox">
+        {vues.map((o, i) => (
+          <button type="button" role="option" aria-selected={choisies.includes(o)} key={o}
+            className={`ca-opt ${i === actif ? 'actif' : ''}`} onMouseEnter={() => setActif(i)} onClick={() => onBasculer(o)}>
+            <Bulle liste={liste} texte={o} />
+            {choisies.includes(o) && <Coche />}
+          </button>
         ))}
-        <button type="button" className="ca-plus" aria-label={`Ajouter : ${libelle}`} aria-expanded={ouvert} onClick={() => { setOuvert(o => !o); setQ(''); }}>+</button>
+        {!vues.length && <div className="ca-vide">Aucune option</div>}
       </div>
-      {ouvert && (
-        <div className="ca-menu">
-          {options.length > 8 && <input autoFocus className="ca-filtre" value={q} onChange={e => setQ(e.target.value)} placeholder="Rechercher…" />}
-          <div className="ca-menu-liste">
-            {liste.map(o => (
-              <label key={o} className="ca-option">
-                <input type="checkbox" checked={valeurs.includes(o)} onChange={() => basculer(o)} /> {o}
-              </label>
-            ))}
-            {!liste.length && <div className="ca-vide">Aucun résultat</div>}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
-// Liens vers des organisations du CRM : bouton « + Ajouter dossier » et recherche.
+// Liste déroulante à choix unique : la valeur s'affiche en bulle colorée.
+function Liste({ valeur, options, onChange, libelle }: { valeur: string; options: string[]; onChange: (v: string) => void; libelle: string }) {
+  const [ouvert, setOuvert] = useState(false);
+  const ref = useFermeture(ouvert, () => setOuvert(false));
+  const liste = CLE.get(options) || '';
+  return (
+    <div className="ca-multi" ref={ref}>
+      <div role="button" tabIndex={0} className={`ca-declencheur ${ouvert ? 'ouvert' : ''}`} aria-label={libelle} aria-haspopup="listbox" aria-expanded={ouvert}
+        onClick={() => setOuvert(o => !o)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') { e.preventDefault(); setOuvert(true); } }}>
+        {valeur ? <Bulle liste={liste} texte={valeur} onRetirer={() => onChange('')} /> : <span className="ca-invite">Choisir…</span>}
+        <span className="ca-chevron" aria-hidden="true" />
+      </div>
+      {ouvert && <MenuOptions liste={liste} options={options} choisies={valeur ? [valeur] : []} onBasculer={o => { onChange(o === valeur ? '' : o); setOuvert(false); }} />}
+    </div>
+  );
+}
+
+// Choix multiples : bulles colorées + bouton « + ».
+function Multi({ valeurs, options, onChange, libelle }: { valeurs: string[]; options: string[]; onChange: (v: string[]) => void; libelle: string }) {
+  const [ouvert, setOuvert] = useState(false);
+  const ref = useFermeture(ouvert, () => setOuvert(false));
+  const liste = CLE.get(options) || '';
+  const basculer = (o: string) => onChange(valeurs.includes(o) ? valeurs.filter(x => x !== o) : [...valeurs, o]);
+  return (
+    <div className="ca-multi" ref={ref}>
+      <div className={`ca-boite ${ouvert ? 'ouvert' : ''}`} onClick={e => { if (e.target === e.currentTarget) setOuvert(o => !o); }}>
+        {valeurs.map(v => <Bulle key={v} liste={liste} texte={v} onRetirer={() => basculer(v)} />)}
+        <button type="button" className="ca-plus" aria-label={`Ajouter : ${libelle}`} aria-expanded={ouvert} onClick={() => setOuvert(o => !o)}>+</button>
+      </div>
+      {ouvert && <MenuOptions liste={liste} options={options} choisies={valeurs} onBasculer={basculer} />}
+    </div>
+  );
+}
+
+// Liens vers des organisations du CRM : « + Ajouter dossier » ouvre une recherche
+// présentée comme les fiches liées d'Airtable (nom, compétences, rôle commercial).
 function Dossiers({ ids, orgs, onChange, libelle }: { ids: string[]; orgs: Organisation[] | null; onChange: (v: string[]) => void; libelle: string }) {
   const [ouvert, setOuvert] = useState(false);
   const [q, setQ] = useState('');
@@ -75,18 +126,24 @@ function Dossiers({ ids, orgs, onChange, libelle }: { ids: string[]; orgs: Organ
     <div className="ca-multi" ref={ref}>
       <div className="ca-dossiers">
         {ids.map(id => (
-          <span key={id} className="ca-puce ca-dossier">{parId.get(id)?.nom || '…'}<button type="button" aria-label="Retirer" onClick={() => onChange(ids.filter(x => x !== id))}>×</button></span>
+          <span key={id} className="ca-dossier">{parId.get(id)?.nom || '…'}<button type="button" aria-label="Retirer" onClick={() => onChange(ids.filter(x => x !== id))}>×</button></span>
         ))}
         <button type="button" className="btn btn-sec btn-sm ca-ajout" aria-expanded={ouvert} onClick={() => { setOuvert(o => !o); setQ(''); }}>+ Ajouter dossier</button>
       </div>
       {ouvert && (
-        <div className="ca-menu ca-menu-large">
-          <input autoFocus className="ca-filtre" value={q} onChange={e => setQ(e.target.value)} placeholder={`Rechercher : ${libelle.toLowerCase()}…`} />
+        <div className="ca-menu ca-menu-fiches">
+          <input autoFocus className="ca-filtre" value={q} onChange={e => setQ(e.target.value)} placeholder={`Rechercher : ${libelle.toLowerCase()}`} />
           <div className="ca-menu-liste">
             {!orgs && <div className="ca-vide">Chargement du CRM…</div>}
             {liste.map(o => (
-              <button type="button" key={o.id} className="ca-option" onClick={() => { onChange([...ids, o.id]); setOuvert(false); }}>
-                <span>{o.nom}</span>{o.roles.length > 0 && <span className="ca-role">{o.roles.join(', ')}</span>}
+              <button type="button" key={o.id} className="ca-fiche" onClick={() => { onChange([...ids, o.id]); setOuvert(false); }}>
+                <span className="ca-fiche-nom">{o.nom}</span>
+                {(o.competences.length > 0 || o.roles.length > 0) && (
+                  <span className="ca-fiche-champs">
+                    <span><small>Compétences</small><span className="ca-bulles">{o.competences.map(c => <Bulle key={c} liste="CRM_COMPETENCES" texte={c} />)}</span></span>
+                    <span><small>Rôle commercial</small><span className="ca-bulles">{o.roles.map(r => <Bulle key={r} liste="CRM_ROLES" texte={r} />)}</span></span>
+                  </span>
+                )}
               </button>
             ))}
             {orgs && !liste.length && <div className="ca-vide">Aucune organisation ne correspond.</div>}
@@ -104,15 +161,6 @@ function Champ({ libelle, oblig, aide, children, large }: { libelle: string; obl
       {aide && <div className="ca-aide">{aide}</div>}
       {children}
     </div>
-  );
-}
-
-function Liste({ valeur, options, onChange, libelle }: { valeur: string; options: string[]; onChange: (v: string) => void; libelle: string }) {
-  return (
-    <select className="ca-select" value={valeur} aria-label={libelle} onChange={e => onChange(e.target.value)}>
-      <option value="" />
-      {options.map(o => <option key={o} value={o}>{o}</option>)}
-    </select>
   );
 }
 
