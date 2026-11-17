@@ -66,7 +66,7 @@ export default function Saisie({ prenom }: { prenom?: string }) {
     try { localStorage.setItem('tpsw_masquer_weekends', v ? '1' : '0'); } catch { /* stockage indisponible */ }
   };
   // Glisser-déposer d'un créneau rempli vers des créneaux vides.
-  const [glisse, setGlisse] = useState<{ affaireId: string; x: number; y: number; cibles: Set<string> } | null>(null);
+  const [glisse, setGlisse] = useState<{ affaireId: string; x: number; y: number; cibles: Set<string>; tactile?: boolean } | null>(null);
   // Demi-journées non travaillées par défaut (férié, week-end, absence) que l'utilisateur vient d'activer.
   const [activees, setActivees] = useState<Set<string>>(new Set());
   const ignorerClicJusqua = useRef(0);
@@ -317,32 +317,52 @@ export default function Saisie({ prenom }: { prenom?: string }) {
 
   // Glisser un créneau rempli : chaque créneau vide survolé est retenu, et
   // l'affaire y est appliquée au relâchement (avec les confirmations
-  // habituelles). Sous 6 px de déplacement, c'est un simple clic.
+  // habituelles). Souris : sous 6 px de déplacement, c'est un simple clic.
+  // Téléphone : appui long (0,4 s) sur le créneau, puis glisser le doigt ;
+  // un glissement avant la fin de l'appui fait défiler la page normalement.
   function debutGlisse(e: React.PointerEvent, source: string, affaireId: string, vers: 'saisie' | 'brouillon' = 'saisie') {
-    if (e.button !== 0 || !data?.editable || enCours) return;
+    const tactile = e.pointerType === 'touch' || e.pointerType === 'pen';
+    if ((!tactile && e.button !== 0) || !data?.editable || enCours) return;
     const x0 = e.clientX, y0 = e.clientY;
     let actif = false;
     const cibles = new Set<string>();
+    const activer = (x: number, y: number) => {
+      actif = true;
+      document.body.classList.add('glisse-en-cours');
+      if (tactile) navigator.vibrate?.(15);
+      setGlisse({ affaireId, x, y, cibles: new Set(cibles), tactile });
+    };
+    const attente = tactile ? window.setTimeout(() => activer(x0, y0), 400) : undefined;
+    // Une fois l'appui long reconnu, le doigt ne fait plus défiler la page.
+    const bloquerDefilement = (ev: TouchEvent) => { if (actif) ev.preventDefault(); };
+    const bloquerMenu = (ev: Event) => { if (tactile) ev.preventDefault(); };
+    const nettoyer = () => {
+      window.clearTimeout(attente);
+      window.removeEventListener('pointermove', bouge);
+      window.removeEventListener('pointerup', fin);
+      window.removeEventListener('pointercancel', fin);
+      window.removeEventListener('touchmove', bloquerDefilement);
+      window.removeEventListener('contextmenu', bloquerMenu);
+      document.body.classList.remove('glisse-en-cours');
+    };
     const bouge = (ev: PointerEvent) => {
       if (!actif) {
-        if (Math.hypot(ev.clientX - x0, ev.clientY - y0) < 6) return;
-        actif = true;
-        document.body.classList.add('glisse-en-cours');
+        const d = Math.hypot(ev.clientX - x0, ev.clientY - y0);
+        if (tactile) { if (d > 10) nettoyer(); return; } // défilement : on laisse faire
+        if (d < 6) return;
+        activer(ev.clientX, ev.clientY);
       }
       ev.preventDefault();
       const el = document.elementFromPoint(ev.clientX, ev.clientY)?.closest(vers === 'brouillon' ? '[data-cle-brouillon]' : '[data-cle]') as HTMLElement | null;
       const c = vers === 'brouillon' ? el?.dataset.cleBrouillon : el?.dataset.cle;
       const vide = vers === 'brouillon' ? !brouillon.has(c || '') : !creneaux.get(c || '')?.affaireId;
       if (c && c !== source && vide) cibles.add(c);
-      setGlisse({ affaireId, x: ev.clientX, y: ev.clientY, cibles: new Set(cibles) });
+      setGlisse({ affaireId, x: ev.clientX, y: ev.clientY, cibles: new Set(cibles), tactile });
     };
     const fin = () => {
-      window.removeEventListener('pointermove', bouge);
-      window.removeEventListener('pointerup', fin);
-      window.removeEventListener('pointercancel', fin);
-      document.body.classList.remove('glisse-en-cours');
+      nettoyer();
       if (!actif) return;
-      ignorerClicJusqua.current = Date.now() + 300;
+      ignorerClicJusqua.current = Date.now() + 400;
       setGlisse(null);
       const a = affParId.get(affaireId);
       if (!a || !cibles.size) return;
@@ -352,6 +372,8 @@ export default function Saisie({ prenom }: { prenom?: string }) {
     window.addEventListener('pointermove', bouge);
     window.addEventListener('pointerup', fin);
     window.addEventListener('pointercancel', fin);
+    window.addEventListener('touchmove', bloquerDefilement, { passive: false });
+    window.addEventListener('contextmenu', bloquerMenu);
   }
   const clicIgnore = () => Date.now() < ignorerClicJusqua.current;
 
@@ -431,7 +453,7 @@ export default function Saisie({ prenom }: { prenom?: string }) {
           onClick={() => basculerActif(j, c)}><span /></button>
         <span className="lib">{LIB[c]}</span>
         {!actif ? <span className="motif-inactif">{motifInactif(j, c)}</span> : <button className={`choix ${s?.affaireId ? 'rempli' : ''} ${s?.affaireId && !lock ? 'glissable' : ''}`} disabled={lock || enCours}
-          title={s?.affaireId && !lock ? 'Cliquer pour changer · glisser vers des créneaux vides pour recopier' : undefined}
+          title={s?.affaireId && !lock ? 'Cliquer pour changer · glisser vers des créneaux vides pour recopier (téléphone : appui long puis glisser)' : undefined}
           onPointerDown={s?.affaireId && !lock ? e => debutGlisse(e, cle, s.affaireId!) : undefined}
           onClick={() => { if (!clicIgnore()) setSelecteur(selection.has(cle) && selection.size > 1 ? [...selection] : [cle]); }}>
           {pilule(s?.affaireId || null, cle)}<span className="chevron">▾</span>
@@ -652,7 +674,7 @@ export default function Saisie({ prenom }: { prenom?: string }) {
       {chargement ? <div className="chargement">Chargement du mois…</div> : data && (vue === 'liste' ? vueListe() : vueCalendrier())}
 
       {glisse && (
-        <div className="badge-glisse" style={{ left: glisse.x + 14, top: glisse.y + 14 }}>
+        <div className="badge-glisse" style={glisse.tactile ? { left: glisse.x - 40, top: glisse.y - 64 } : { left: glisse.x + 14, top: glisse.y + 14 }}>
           {affParId.get(glisse.affaireId)?.code} → {glisse.cibles.size} créneau{glisse.cibles.size > 1 ? 'x' : ''}
         </div>
       )}
@@ -687,7 +709,7 @@ export default function Saisie({ prenom }: { prenom?: string }) {
                   <button className="lien" onClick={() => setSelPanneau(new Set())}>Annuler</button>
                 </div>
               )}
-              <p className="aide-manquants">Astuce : glisse un créneau rempli vers les créneaux vides, ou coche avec Maj + clic pour sélectionner une plage.</p>
+              <p className="aide-manquants">Astuce : glisse un créneau rempli vers les créneaux vides (sur téléphone : appui long sur le créneau, puis glisse le doigt), ou coche avec Maj + clic pour sélectionner une plage.</p>
               <div className="manquants">
                 {[...parJour].map(([date, cs]) => (
                   <div className="manquant-jour" key={date}>

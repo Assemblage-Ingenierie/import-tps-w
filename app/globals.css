@@ -736,3 +736,10 @@ html { -webkit-text-size-adjust: 100%; touch-action: manipulation; }
 
 /* Créer une affaire : ligne pleine largeur (Spécificité Chorus) */
 .ca-grille.g1 { grid-template-columns: minmax(0, 1fr); }
+
+/* Téléphone : appui long sur un créneau rempli puis glisser (pas de loupe,
+   pas de menu, pas de sélection de texte pendant l'appui) */
+.creneau button, .cal-demi, [data-cle-brouillon] button { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+body.glisse-en-cours { overscroll-behavior: none; }
+body.glisse-en-cours .badge-glisse { pointer-events: none; }
+@media (hover: none) { .badge-glisse { font-size: 14px; padding: 7px 12px; box-shadow: 0 8px 24px rgba(17,24,39,.25); } }
