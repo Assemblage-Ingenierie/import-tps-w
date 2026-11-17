@@ -4,6 +4,7 @@ import { utilisateurCourant } from '@/lib/auth';
 import { envCourant } from '@/lib/config';
 import Entete from '@/components/Entete';
 import Inspecteur from '@/components/Inspecteur';
+import ProposerInstallation from '@/components/ProposerInstallation';
 
 export default async function LayoutApp({ children }: { children: React.ReactNode }) {
   const u = await utilisateurCourant();
@@ -17,6 +18,7 @@ export default async function LayoutApp({ children }: { children: React.ReactNod
         <main className="page">{children}</main>
       </div>
       {u.estAdmin && <Inspecteur />}
+      <ProposerInstallation />
     </div>
   );
 }

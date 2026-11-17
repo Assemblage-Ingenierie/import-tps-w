@@ -743,3 +743,22 @@ html { -webkit-text-size-adjust: 100%; touch-action: manipulation; }
 body.glisse-en-cours { overscroll-behavior: none; }
 body.glisse-en-cours .badge-glisse { pointer-events: none; }
 @media (hover: none) { .badge-glisse { font-size: 14px; padding: 7px 12px; box-shadow: 0 8px 24px rgba(17,24,39,.25); } }
+
+/* ════════ Proposition d'installation (téléphone) ════════ */
+.inst-voile { position: fixed; inset: 0; z-index: 90; background: rgba(17,24,39,.35); display: flex; align-items: flex-end; justify-content: center; padding: 12px 12px calc(12px + env(safe-area-inset-bottom)); animation: inst-fondu .2s ease-out; }
+@keyframes inst-fondu { from { opacity: 0; } to { opacity: 1; } }
+.inst-carte { position: relative; width: 100%; max-width: 440px; background: #fff; border-radius: 18px; box-shadow: 0 20px 48px rgba(17,24,39,.25); padding: 18px 18px 14px; animation: inst-monte .25s ease-out; }
+@keyframes inst-monte { from { transform: translateY(24px); } to { transform: none; } }
+.inst-tete { display: flex; gap: 14px; align-items: center; }
+.inst-icone { width: 56px; height: 56px; border-radius: 13px; border: 1px solid var(--gris); flex-shrink: 0; }
+.inst-tete strong { display: block; font-size: 16px; color: var(--violet); }
+.inst-tete span { display: block; font-size: 13px; color: var(--noir70); margin-top: 2px; line-height: 1.4; }
+.inst-etapes { list-style: none; margin: 16px 0 4px; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.inst-etapes li { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 14px; color: var(--violet); line-height: 1.5; }
+.inst-num { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--rouge-clair); color: var(--rouge-fonce); font-size: 12px; font-weight: 700; margin-right: 4px; flex-shrink: 0; }
+.inst-bouton { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 7px; background: #F3F4F6; color: #007AFF; }
+.inst-texte { font-size: 14px; color: var(--noir70); margin: 14px 0 4px; }
+.inst-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px; }
+.inst-actions .btn { flex: 1; justify-content: center; }
+/* Petite flèche vers la barre de Safari (en bas sur iPhone) */
+.inst-fleche { position: absolute; left: 50%; bottom: -9px; width: 18px; height: 18px; background: #fff; transform: translateX(-50%) rotate(45deg); border-radius: 3px; }
