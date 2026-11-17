@@ -89,7 +89,7 @@ function Liste({ valeur, options, onChange, libelle }: { valeur: string; options
         {valeur ? <Bulle liste={liste} texte={valeur} onRetirer={() => onChange('')} /> : <span className="ca-invite">Choisir…</span>}
         <span className="ca-chevron" aria-hidden="true" />
       </div>
-      {ouvert && <MenuOptions liste={liste} options={options} choisies={valeur ? [valeur] : []} onBasculer={o => { onChange(o === valeur ? '' : o); setOuvert(false); }} />}
+      {ouvert && <MenuOptions liste={liste} options={options} choisies={valeur ? [valeur] : []} onBasculer={o => { onChange(o); setOuvert(false); }} />}
     </div>
   );
 }
