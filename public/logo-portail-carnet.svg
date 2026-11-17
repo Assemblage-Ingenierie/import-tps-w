@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600">
+  <!-- Logo de Carnet pour le portail des applications Assemblage :
+       même famille que « AI Chantier » et « AI Portfolio » (cercle rouge,
+       pictogramme, « AI », nom en arc). -->
+  <rect width="600" height="600" fill="#FFFFFF" />
+  <circle cx="300" cy="300" r="282" fill="#FFFFFF" stroke="#E2141E" stroke-width="9" />
+
+  <!-- Pictogramme : carnet à spirale avec lignes et coche -->
+  <g fill="none" stroke="#E2141E" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="236" y="74" width="132" height="158" rx="12" stroke-width="10" />
+    <g stroke-width="8">
+      <path d="M 222 102 h 30" /><path d="M 222 134 h 30" /><path d="M 222 166 h 30" /><path d="M 222 198 h 30" />
+    </g>
+    <g stroke-width="8">
+      <path d="M 274 112 h 70" /><path d="M 274 140 h 70" /><path d="M 274 168 h 42" />
+    </g>
+    <path d="M 298 200 l 14 14 l 30 -32" stroke-width="10" />
+  </g>
+
+  <text x="300" y="424" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="bold" font-size="176" fill="#E2141E" letter-spacing="-4">AI</text>
+
+  <!-- « CARNET » en arc, lettre par lettre (sans textPath, pour tous les moteurs) -->
+  <g font-family="Arial, Helvetica, sans-serif" font-weight="bold" font-size="40" fill="#E2141E">
+    <text x="386.2" y="530.4" transform="rotate(-20.5 386.2 530.4)" text-anchor="middle">T</text>
+    <text x="352.4" y="540.4" transform="rotate(-12.3 352.4 540.4)" text-anchor="middle">E</text>
+    <text x="317.6" y="545.4" transform="rotate(-4.1 317.6 545.4)" text-anchor="middle">N</text>
+    <text x="282.4" y="545.4" transform="rotate(4.1 282.4 545.4)" text-anchor="middle">R</text>
+    <text x="247.6" y="540.4" transform="rotate(12.3 247.6 540.4)" text-anchor="middle">A</text>
+    <text x="213.8" y="530.4" transform="rotate(20.5 213.8 530.4)" text-anchor="middle">C</text>
+  </g>
+</svg>
