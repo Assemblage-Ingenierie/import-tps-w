@@ -116,7 +116,7 @@ export default function Entete({ nom, email, admin, peutBasculer }: { nom: strin
               <button className={admin ? 'on' : ''} aria-pressed={admin} disabled={bascule} onClick={() => changerVue('admin')}>Admin</button>
             </span>
           )}
-          <a href="/api/auth/logout" className="lat-lien lat-sortie"><Icone nom="sortie" /><span>Déconnexion</span></a>
+          <a href="/api/auth/logout" className="lat-lien lat-sortie" onClick={() => { try { Object.keys(localStorage).filter(x => x.startsWith('carnet_cache_')).forEach(x => localStorage.removeItem(x)); } catch { /* stockage indisponible */ } }}><Icone nom="sortie" /><span>Déconnexion</span></a>
         </div>
       </aside>
     </>

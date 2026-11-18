@@ -150,6 +150,11 @@ function verrou(u: Utilisateur, ym: string, statut: Statut): string | null {
 
 export async function donneesMois(u: Utilisateur, p: Personne, ym: string): Promise<DonneesMois> {
   const [e, st, fiche] = await Promise.all([charger(p, ym), lireStatut(p.prenom, ym), ficheDe(p.prenom, exerciceDe(ym + '-01'))]);
+  return assembler(u, p, ym, e, st, fiche);
+}
+
+// Données du mois à partir de lectures déjà faites (évite de les refaire).
+function assembler(u: Utilisateur, p: Personne, ym: string, e: Etat, st: LigneStatut, fiche: Awaited<ReturnType<typeof ficheDe>>): DonneesMois {
   const a = analyser(ym, e, new Set(st.off));
   const refs: Record<string, ReturnType<typeof versLite>> = {};
   for (const c of a.creneaux) {
@@ -182,11 +187,10 @@ export function horsPole(monPole: string | undefined, polAffaire: string): boole
 
 // ── Écriture des créneaux ────────────────────────────────────────────────
 export async function enregistrer(u: Utilisateur, p: Personne, ym: string, changements: Changement[]): Promise<DonneesMois> {
-  const st = await lireStatut(p.prenom, ym);
+  // Lectures en parallèle (statut, saisies, absences, affaires, fiche).
+  const [st, e, fiche] = await Promise.all([lireStatut(p.prenom, ym), charger(p, ym), ficheDe(p.prenom, exerciceDe(ym + '-01'))]);
   const raison = verrou(u, ym, st.statut);
   if (raison) throw new ErreurHttp(423, raison);
-  const e = await charger(p, ym);
-  const fiche = await ficheDe(p.prenom, exerciceDe(ym + '-01'));
   const cibles: Cible[] = [];
   const off = new Set(st.off);
   for (const ch of changements) {
@@ -231,8 +235,14 @@ export async function enregistrer(u: Utilisateur, p: Personne, ym: string, chang
   const offTrie = [...off].filter(x => x.slice(0, 7) === ym).sort();
   if (offTrie.join() !== [...st.off].sort().join()) maj[VALIDATION.f.nonTravailles] = offTrie.length ? JSON.stringify(offTrie) : null;
   if (u.role !== 'admin' && st.statut === 'En attente de validation') maj[VALIDATION.f.statut] = 'A compléter';
-  if (Object.keys(maj).length) await ecrireStatut(p, ym, st, maj);
-  return donneesMois(u, p, ym);
+  // Écritures du statut et relecture des seules saisies, en parallèle ; le reste
+  // (absences, affaires, fiche, statut) est déjà connu.
+  const [saisies] = await Promise.all([
+    cibles.length ? saisiesDuMois(p.prenom, ym) : Promise.resolve(e.saisies),
+    Object.keys(maj).length ? ecrireStatut(p, ym, st, maj) : Promise.resolve(),
+  ]);
+  const stApres: LigneStatut = { ...st, off: offTrie, statut: maj[VALIDATION.f.statut] ? 'A compléter' : st.statut };
+  return assembler(u, p, ym, { ...e, saisies }, stApres, fiche);
 }
 
 // ── Workflow ─────────────────────────────────────────────────────────────

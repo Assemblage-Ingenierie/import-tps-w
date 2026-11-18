@@ -30,6 +30,63 @@ async function appel<T>(url: string, init?: RequestInit): Promise<T> {
   return d as T;
 }
 
+// Cache local des mois déjà ouverts : affichage immédiat à l'ouverture, puis
+// mise à jour dès que le serveur répond. Vidé à la déconnexion.
+const CACHE = 'carnet_cache_v1|';
+const SEPT_JOURS = 7 * 24 * 3600 * 1000;
+function lireCache<T>(cle: string): T | null {
+  try { const x = JSON.parse(localStorage.getItem(CACHE + cle) || 'null'); return x && Date.now() - x.t < SEPT_JOURS ? (x.d as T) : null; } catch { return null; }
+}
+function ecrireCache(cle: string, d: unknown) {
+  try { localStorage.setItem(CACHE + cle, JSON.stringify({ t: Date.now(), d })); } catch { /* stockage plein ou indisponible */ }
+}
+
+// Applique des changements au mois affiché, sans attendre le serveur (même
+// calcul que le serveur pour les créneaux manquants et les conflits).
+function appliquerLocal(d: DonneesMois, chs: Changement[], affaires: Map<string, AffaireLite>): DonneesMois {
+  const cr = new Map(d.creneaux.map(c => [k(c.date, c.creneau), c]));
+  const off = new Set(d.nonTravailles);
+  const refs = { ...d.affaires };
+  const jours = new Map(d.jours.map(j => [j.date, j]));
+  for (const ch of chs) {
+    const cle = k(ch.date, ch.creneau);
+    if (ch.nonTravaille === true) off.add(cle);
+    if (ch.nonTravaille === false || ch.affaireId) off.delete(cle);
+    if (ch.affaireId === undefined) continue;
+    if (!ch.affaireId) { cr.delete(cle); continue; }
+    const a = affaires.get(ch.affaireId);
+    if (a) refs[a.id] = a;
+    cr.set(cle, {
+      date: ch.date, creneau: ch.creneau, affaireId: ch.affaireId,
+      confirmClot: !!(a?.clos && ch.confirmClot),
+      confirmNonOuvre: !!(!estOuvre(ch.date) && ch.confirmNonOuvre),
+      confirmAbsence: !!(jours.get(ch.date)?.absence[ch.creneau] && ch.confirmAbsence),
+    });
+  }
+  const manquants: DonneesMois['completude']['manquants'] = [];
+  const conflits: DonneesMois['conflits'] = [];
+  let attendus = 0, couverts = 0;
+  for (const j of d.jours) {
+    for (const c of CRENEAUX) {
+      const s = cr.get(k(j.date, c));
+      const abs = j.absence[c];
+      if (abs && s?.affaireId && !s.confirmAbsence) conflits.push({ date: j.date, creneau: c, affaireId: s.affaireId });
+      if (!estOuvre(j.date)) continue;
+      if (off.has(k(j.date, c)) && !s?.affaireId) continue;
+      attendus++;
+      if (abs || s?.affaireId) couverts++; else manquants.push({ date: j.date, creneau: c });
+    }
+  }
+  const repasse = !d.vueAdmin && d.statut === 'En attente de validation';
+  return {
+    ...d, creneaux: [...cr.values()], affaires: refs, conflits,
+    nonTravailles: [...off].filter(x => x.slice(0, 7) === d.ym).sort(),
+    completude: { attendus, couverts, manquants },
+    statut: repasse ? 'A compléter' : d.statut,
+    modifieApresEnvoi: repasse ? !!d.soumisLe : d.modifieApresEnvoi,
+  };
+}
+
 function lireRecentes(): string[] {
   try { return JSON.parse(localStorage.getItem('tpsw_recentes') || '[]'); } catch { return []; }
 }
@@ -77,6 +134,13 @@ export default function Saisie({ prenom }: { prenom?: string }) {
   const [wrapped, setWrapped] = useState<Carte[] | null>(null);
 
   const qPrenom = prenom ? `&prenom=${encodeURIComponent(prenom)}` : '';
+  const cleCache = `mois|${prenom || ''}|${ym}`;
+  // Enregistrements en arrière-plan : file d'envois (dans l'ordre) et nombre en attente.
+  const file = useRef<Promise<unknown>>(Promise.resolve());
+  const enAttente = useRef(0);
+  const [enregistrement, setEnregistrement] = useState(false);
+  const ymCourant = useRef(ym);
+  ymCourant.current = ym;
   const aller = (o: { ym?: string; vue?: Vue }) => {
     const p = new URLSearchParams(params.toString());
     if (o.ym) p.set('ym', o.ym);
@@ -85,18 +149,33 @@ export default function Saisie({ prenom }: { prenom?: string }) {
   };
 
   const charger = useCallback(async () => {
-    setChargement(true); setErreur(null); setSelection(new Set()); setActivees(new Set());
-    try { setData(await appel<DonneesMois>(`/api/mois?ym=${ym}${qPrenom}`)); }
-    catch (e) { setErreur((e as Error).message); setData(null); }
+    setErreur(null); setSelection(new Set()); setActivees(new Set());
+    // Affichage immédiat du mois tel qu'il était à la dernière ouverture.
+    const cache = lireCache<DonneesMois>(cleCache);
+    if (cache) { setData(cache); setChargement(false); } else setChargement(true);
+    try {
+      const d = await appel<DonneesMois>(`/api/mois?ym=${ym}${qPrenom}`);
+      ecrireCache(cleCache, d);
+      // Pas d'écrasement si une saisie est en cours d'envoi ou si le mois a changé.
+      if (!enAttente.current && ymCourant.current === ym) setData(d);
+      // Mois précédent préparé en arrière-plan (navigation instantanée).
+      const prec = moisDecale(ym, -1);
+      if (!lireCache(`mois|${prenom || ''}|${prec}`)) appel<DonneesMois>(`/api/mois?ym=${prec}${qPrenom}`).then(x => ecrireCache(`mois|${prenom || ''}|${prec}`, x)).catch(() => undefined);
+    }
+    catch (e) { if (!cache) { setErreur((e as Error).message); setData(null); } }
     finally { setChargement(false); }
-  }, [ym, qPrenom]);
+  }, [ym, qPrenom, cleCache, prenom]);
 
   useEffect(() => { charger(); }, [charger]);
   useEffect(() => { if (params.get('commentaires') === '1') setPanneau('commentaires'); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     setRecentes(lireRecentes());
-    appel<{ affaires: AffaireLite[]; mes: (AffaireLite & { joursExercice: number })[] }>(`/api/affaires?mes=1${qPrenom}`)
-      .then(d => { setAffaires(d.affaires); setMesIds(new Set(d.mes.map(a => a.id))); setJoursMes(new Map(d.mes.map(a => [a.id, a.joursExercice]))); })
+    type ReponseAffaires = { affaires: AffaireLite[]; mes: (AffaireLite & { joursExercice: number })[] };
+    const cleAff = `affaires|${prenom || ''}`;
+    const enCache = lireCache<ReponseAffaires>(cleAff);
+    if (enCache) { setAffaires(enCache.affaires); setMesIds(new Set(enCache.mes.map(a => a.id))); setJoursMes(new Map(enCache.mes.map(a => [a.id, a.joursExercice]))); }
+    appel<ReponseAffaires>(`/api/affaires?mes=1${qPrenom}`)
+      .then(d => { ecrireCache(cleAff, d); setAffaires(d.affaires); setMesIds(new Set(d.mes.map(a => a.id))); setJoursMes(new Map(d.mes.map(a => [a.id, a.joursExercice]))); })
       .catch(() => appel<{ affaires: AffaireLite[] }>('/api/affaires').then(d => setAffaires(d.affaires)).catch(() => undefined));
   }, [qPrenom]);
 
@@ -159,18 +238,45 @@ export default function Saisie({ prenom }: { prenom?: string }) {
   };
 
   // ── Enregistrement avec confirmations ──────────────────────────────────
-  async function envoyer(changements: Changement[]): Promise<boolean> {
-    if (!changements.length) return false;
-    setEnCours(true); setErreur(null);
-    try {
-      const d = await appel<DonneesMois>('/api/mois', { method: 'PUT', body: JSON.stringify({ ym, prenom, changements }) });
-      setData(d); setSelection(new Set());
-      return true;
-    } catch (e) {
-      setErreur((e as Error).message);
-      return false;
-    } finally { setEnCours(false); }
+  // Enregistrement « optimiste » : l'écran est mis à jour tout de suite, l'envoi
+  // part en arrière-plan (les envois se suivent dans l'ordre). La réponse du
+  // serveur fait foi une fois tous les envois terminés ; en cas d'erreur, le
+  // mois est rechargé depuis le serveur et l'erreur affichée.
+  function envoyer(changements: Changement[]): Promise<boolean> {
+    if (!changements.length) return Promise.resolve(false);
+    setErreur(null);
+    setData(d => (d ? appliquerLocal(d, changements, affParId) : d));
+    setSelection(new Set());
+    const moisEnvoi = ym;
+    enAttente.current++; setEnregistrement(true);
+    const p = file.current.then(async () => {
+      try {
+        const d = await appel<DonneesMois>('/api/mois', { method: 'PUT', body: JSON.stringify({ ym: moisEnvoi, prenom, changements }) });
+        enAttente.current--;
+        ecrireCache(`mois|${prenom || ''}|${moisEnvoi}`, d);
+        if (!enAttente.current && ymCourant.current === moisEnvoi) setData(d);
+        return true;
+      } catch (e) {
+        enAttente.current--;
+        setErreur(`Non enregistré : ${(e as Error).message}`);
+        if (!enAttente.current && ymCourant.current === moisEnvoi) {
+          appel<DonneesMois>(`/api/mois?ym=${moisEnvoi}${qPrenom}`).then(d => { ecrireCache(`mois|${prenom || ''}|${moisEnvoi}`, d); setData(d); }).catch(() => undefined);
+        }
+        return false;
+      } finally {
+        if (!enAttente.current) setEnregistrement(false);
+      }
+    });
+    file.current = p;
+    return p;
   }
+
+  // Avant de quitter la page avec des envois en cours : avertissement du navigateur.
+  useEffect(() => {
+    const avant = (e: BeforeUnloadEvent) => { if (enAttente.current) { e.preventDefault(); e.returnValue = ''; } };
+    window.addEventListener('beforeunload', avant);
+    return () => window.removeEventListener('beforeunload', avant);
+  }, []);
 
   function preparer(cles: string[], a: AffaireLite | null) {
     const changements: Changement[] = cles.map(x => {
@@ -380,8 +486,9 @@ export default function Saisie({ prenom }: { prenom?: string }) {
   async function workflow(action: 'soumettre' | 'valider' | 'refuser' | 'rouvrir', motif?: string) {
     setEnCours(true); setErreur(null);
     try {
+      await file.current; // les saisies en cours d'envoi partent d'abord
       const d = await appel<DonneesMois>('/api/mois', { method: 'POST', body: JSON.stringify({ ym, prenom, action, motif }) });
-      setData(d); setPanneau(null);
+      setData(d); ecrireCache(cleCache, d); setPanneau(null);
       if (action === 'soumettre') lancerConfettis();
       setInfo(action === 'soumettre' ? `${frMois(ym).replace(/^./, x => x.toUpperCase())} bouclé le ${new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })} 🎉 Merci${d.collab.prenom ? ' ' + d.collab.prenom : ''}, ton mois est parti en validation.` : action === 'valider' ? 'Mois validé.' : action === 'refuser' ? 'Mois refusé : le collaborateur peut corriger et soumettre de nouveau.' : 'Mois rouvert.');
     } catch (e) {
@@ -686,7 +793,7 @@ export default function Saisie({ prenom }: { prenom?: string }) {
           <button className="lien" onClick={() => setSelection(new Set())}>Annuler</button>
         </div>
       )}
-      {enCours && <div className="sauvegarde">Enregistrement…</div>}
+      {(enCours || enregistrement) && <div className="sauvegarde">Enregistrement…</div>}
 
       {panneau === 'manquants' && data && (() => {
         const manq = data.completude.manquants;
