@@ -6,7 +6,7 @@
 // Les routes API revérifient de toute façon la session et le rôle : ce proxy
 // est une première barrière, pas la seule.
 import { NextResponse, type NextRequest } from 'next/server';
-import { COOKIE, COOKIE_VUE, lireJeton } from '@/lib/session';
+import { COOKIE, COOKIE_VUE, DUREE_S, enteteCookie, jetonRenouvele, lireJeton } from '@/lib/session';
 
 const LIBRES = new Set(['/login', '/api/auth/callback', '/api/auth/logout', '/api/me', '/favicon.ico', '/logo-assemblage-noir.png', '/manifest.webmanifest', '/icon', '/apple-icon']);
 const ADMIN = [/^\/admin(\/|$)/, /^\/legacy\//, /^\/api\/admin\//, /^\/api\/airtable$/, /^\/api\/calendar$/];
@@ -25,7 +25,11 @@ export async function proxy(request: NextRequest) {
     if (api) return NextResponse.json({ erreur: 'Réservé aux administrateurs' }, { status: 403 });
     return NextResponse.redirect(new URL('/saisie', request.url));
   }
-  return NextResponse.next();
+  // Session glissante : on renouvelle le cookie (30 jours) dès qu'il a plus d'un jour.
+  const res = NextResponse.next();
+  const nouveau = await jetonRenouvele(request.cookies.get(COOKIE)?.value);
+  if (nouveau) res.headers.append('Set-Cookie', enteteCookie(nouveau, DUREE_S));
+  return res;
 }
 
 export const config = {

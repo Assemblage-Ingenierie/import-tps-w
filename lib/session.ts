@@ -11,7 +11,11 @@ export const COOKIE = 'tpsw_session';
 // Ce cookie ne peut que RETIRER des droits : le rôle Admin vient toujours
 // d'ADMIN_EMAILS, jamais du navigateur.
 export const COOKIE_VUE = 'tpsw_vue';
-export const DUREE_S = 12 * 3600;
+// Session glissante : 30 jours, renouvelée par le proxy à chaque visite dès que
+// le jeton a plus d'un jour. Quelqu'un qui utilise Carnet au moins une fois par
+// mois ne se reconnecte pas ; la déconnexion reste possible à tout moment.
+export const DUREE_S = 30 * 24 * 3600;
+const RENOUVELLEMENT_S = 24 * 3600;
 
 export interface Session {
   email: string;
@@ -77,6 +81,20 @@ export async function lireJeton(jeton: string | null | undefined, vue?: string |
   } catch {
     return null;
   }
+}
+
+// Nouveau jeton (30 jours à partir de maintenant) si le jeton actuel est valide
+// et a plus d'un jour ; sinon null. Les droits ne sont pas dans le jeton : ils
+// sont recalculés à chaque requête, un renouvellement n'en conserve aucun.
+export async function jetonRenouvele(jeton: string | null | undefined): Promise<string | null> {
+  if (!jeton) return null;
+  try {
+    const { payload } = await jwtVerify(jeton, cle(), { issuer: 'tpsw', audience: 'tpsw' });
+    if (!payload.iat || Date.now() / 1000 - payload.iat < RENOUVELLEMENT_S) return null;
+    const email = String(payload.email || '').toLowerCase();
+    if (!estEmailDuDomaine(email)) return null;
+    return await creerSession({ email, nom: String(payload.nom || ''), prenom: String(payload.prenom || ''), famille: String(payload.famille || '') });
+  } catch { return null; }
 }
 
 export function enteteCookie(valeur: string, maxAge: number): string {
